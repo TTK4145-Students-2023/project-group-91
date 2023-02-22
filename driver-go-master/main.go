@@ -21,6 +21,21 @@ func (o *Orders) Restart() {
 
 }
 
+func (o *Orders) completeOrder(floor int, dir elevio.MotorDirection) {
+
+	elevio.SetMotorDirection(elevio.MD_Stop)
+	o.Cab[floor] = false
+	o.HallUp[floor] = false
+	o.HallDown[floor] = false
+
+	for b := elevio.ButtonType(0); b < 3; b++ {
+		elevio.SetButtonLamp(b, floor, false)
+	}
+	time.Sleep(2000 * time.Millisecond)
+	elevio.SetMotorDirection(dir)
+
+}
+
 func main() {
 
 	numFloors := 4
@@ -81,11 +96,7 @@ func main() {
 
 			for i, v := range orders.Cab {
 				if i == a && v == true {
-					curr_d := d
-					d = elevio.MD_Stop
-					elevio.SetMotorDirection(d)
-					time.Sleep(2000 * time.Millisecond)
-					d = curr_d
+					orders.completeOrder(a, d)
 
 				} else if a == numFloors-1 {
 					d = elevio.MD_Down
