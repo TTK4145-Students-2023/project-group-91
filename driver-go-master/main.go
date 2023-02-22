@@ -3,6 +3,7 @@ package main
 import (
 	"Driver-go/elevio"
 	"fmt"
+	"time"
 )
 
 type Orders struct {
@@ -75,6 +76,26 @@ func main() {
 			}
 			fmt.Println(orders)
 
+		case a := <-drv_floors:
+			fmt.Printf("--2:%+v\n", a)
+
+			for i, v := range orders.Cab {
+				if i == a && v == true {
+					curr_d := d
+					d = elevio.MD_Stop
+					elevio.SetMotorDirection(d)
+					time.Sleep(2000 * time.Millisecond)
+					d = curr_d
+
+				} else if a == numFloors-1 {
+					d = elevio.MD_Down
+				} else if a == 0 {
+					d = elevio.MD_Up
+				}
+				elevio.SetMotorDirection(d)
+			}
+
+			//MANUAL CONTROL
 			// case a := <-drv_buttons:
 			// 	fmt.Printf("--1:%+v\n", a)
 			// 	if a.Button == 2 {
@@ -93,15 +114,6 @@ func main() {
 			// case a := <-drv_buttons:
 			// 	fmt.Printf("--1:%+v\n", a)
 			// 	elevio.SetButtonLamp(a.Button, a.Floor, true)
-
-			// case a := <-drv_floors:
-			// 	fmt.Printf("--2:%+v\n", a)
-			// 	if a == numFloors-1 {
-			// 		d = elevio.MD_Down
-			// 	} else if a == 0 {
-			// 		d = elevio.MD_Up
-			// 	}
-			// 	elevio.SetMotorDirection(d)
 
 			// case a := <-drv_obstr:
 			// 	fmt.Printf("--3:%+v\n", a)
