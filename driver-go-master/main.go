@@ -267,27 +267,14 @@ func main() {
 		select {
 
 		case a := <-drv_buttons:
-			switch a.Button {
-			case 0:
-				if a.Floor != numFloors {
-					orders.HallUp[a.Floor] = true
-					elevio.SetButtonLamp(a.Button, a.Floor, true)
-				}
-			case 1:
-				if a.Floor != 0 {
-					orders.HallDown[a.Floor] = true
-					elevio.SetButtonLamp(a.Button, a.Floor, true)
-				}
-			case 2:
-				orders.Cab[a.Floor] = true
-				elevio.SetButtonLamp(a.Button, a.Floor, true)
-			}
-			fmt.Println(orders)
+			elev.orders.setOrder(a.Floor, a.Button)
+			fmt.Println(elev.orders)
 
 		case a := <-drv_floors:
-			fmt.Printf("--2:%+v\n", a)
+			// fmt.Printf("--2:%+v\n", a)
 			elev.updateFloor()
-			fmt.Println(elev.getFloor())
+			elev.completeOrder(a)
+			fmt.Println("current floor:", elev.getFloor())
 
 			// for i, v := range orders.Cab {
 			// 	if i == a && v == true {
@@ -302,6 +289,11 @@ func main() {
 			// }
 
 		case a := <-drv_stop:
+			if a {
+				elev.stop()
+			}
+
+		case a := <-drv_obstr:
 			if a {
 				elev.stop()
 			}
