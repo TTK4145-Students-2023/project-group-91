@@ -6,17 +6,40 @@ import (
 	"time"
 )
 
+// SECTION - Orders
 type Orders struct {
 	HallUp   []bool
 	HallDown []bool
 	Cab      []bool
 }
 
-func (o *Orders) Restart() {
-	for i, _ := range o.Cab {
+func (o *Orders) setOrder(floor int, button elevio.ButtonType) {
+
+	if button == 0 {
+		o.HallUp[floor] = true
+		elevio.SetButtonLamp(button, floor, true)
+
+	} else if button == 2 {
+		o.Cab[floor] = true
+		elevio.SetButtonLamp(button, floor, true)
+
+	} else if button == 1 {
+		o.HallDown[floor] = true
+		elevio.SetButtonLamp(button, floor, true)
+
+	}
+
+}
+func (o *Orders) clearAll() {
+	for i := range o.Cab {
 		o.HallDown[i] = false
 		o.HallUp[i] = false
 		o.Cab[i] = false
+	}
+	for i := range o.Cab {
+		for b := elevio.ButtonType(0); b < 3; b++ {
+			elevio.SetButtonLamp(b, i, false)
+		}
 	}
 
 }
@@ -24,6 +47,7 @@ func (o *Orders) Restart() {
 func (o *Orders) completeOrder(floor int, dir elevio.MotorDirection) {
 
 	elevio.SetMotorDirection(elevio.MD_Stop)
+	elevio.SetDoorOpenLamp(true)
 	o.Cab[floor] = false
 	o.HallUp[floor] = false
 	o.HallDown[floor] = false
@@ -32,15 +56,102 @@ func (o *Orders) completeOrder(floor int, dir elevio.MotorDirection) {
 		elevio.SetButtonLamp(b, floor, false)
 	}
 	time.Sleep(2000 * time.Millisecond)
+	elevio.SetDoorOpenLamp(false)
 	elevio.SetMotorDirection(dir)
 
 }
+
+//!SECTION
+
+// SECTION - Elev
+type Elev struct {
+	dir       int
+	curFloor  int
+	doorOpen  bool
+	numFloors int
+	orders    Orders
+}
+
+func (e *Elev) setup(numFloors int) {
+	e.dir = 0
+	e.curFloor = 0
+	e.doorOpen = false
+	e.numFloors = numFloors
+	e.orders = Orders{
+		make([]bool, numFloors),
+		make([]bool, numFloors),
+		make([]bool, numFloors)}
+	e.orders.clearAll()
+}
+func (e *Elev) updateFloor() int {
+	e.curFloor = elevio.GetFloor()
+	return e.curFloor
+}
+func (e *Elev) setFloor(f int) {
+	e.curFloor = f
+}
+func (e Elev) getDirection() int {
+	return e.dir
+}
+func (e Elev) getFloor() int {
+	return e.curFloor
+}
+func (e *Elev) goUp() bool {
+	if e.doorOpen {
+		return false
+
+	} else if e.curFloor == e.numFloors-1 {
+		return false
+	} else {
+		e.dir = 1
+		elevio.SetMotorDirection(elevio.MD_Up)
+		return true
+	}
+}
+func (e *Elev) goDown() bool {
+	if e.doorOpen {
+		return false
+
+	} else if e.curFloor == 0 {
+		return false
+
+	} else {
+		e.dir = 1
+		elevio.SetMotorDirection(elevio.MD_Up)
+		return true
+	}
+}
+func (e *Elev) stop() {
+	e.dir = 0
+	elevio.SetMotorDirection(elevio.MD_Stop)
+}
+func (e *Elev) openDoors() {
+	e.doorOpen = true
+	elevio.SetDoorOpenLamp(true)
+}
+func (e *Elev) closeDoors() bool {
+
+	if elevio.GetObstruction() {
+		e.doorOpen = true
+		return false
+	} else {
+		elevio.SetDoorOpenLamp(false)
+		e.doorOpen = false
+		return true
+	}
+
+}
+func (e *Elev) completeOrder(floor int) {
+
+}
+
+//!SECTION
 
 func main() {
 
 	numFloors := 4
 
-	elevio.Init("localhost:20017", numFloors)
+	elevio.Init("localhost:15657", numFloors)
 
 	var d elevio.MotorDirection = elevio.MD_Up
 	elevio.SetMotorDirection(d)
@@ -52,13 +163,10 @@ func main() {
 		make([]bool, numFloors),
 		make([]bool, numFloors),
 		make([]bool, numFloors)}
-	orders.Restart()
+	orders.clearAll()
 
-	for f := 0; f < numFloors; f++ {
-		for b := elevio.ButtonType(0); b < 3; b++ {
-			elevio.SetButtonLamp(b, f, false)
-		}
-	}
+	elev := Elev{}
+	elev.setup(numFloors)
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -93,6 +201,8 @@ func main() {
 
 		case a := <-drv_floors:
 			fmt.Printf("--2:%+v\n", a)
+			fmt.Println("GetFloor:", elevio.GetFloor())
+			elev.setFloor(a)
 
 			for i, v := range orders.Cab {
 				if i == a && v == true {
