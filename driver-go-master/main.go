@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const Open_Door_Time = 2
+
 // SECTION - Orders
 type Orders struct {
 	HallUp   []bool
@@ -30,6 +32,28 @@ func (o *Orders) setOrder(floor int, button elevio.ButtonType) {
 	}
 
 }
+func (o Orders) checkOrder(floor int) (bool, int) {
+
+	if o.Cab[floor] {
+		return true, 0
+
+	} else if o.HallUp[floor] {
+
+		if o.HallUp[floor] == o.HallDown[floor] {
+			return true, 0
+		} else {
+			return true, 1
+		}
+
+	} else if o.HallDown[floor] {
+		return true, -1
+
+	} else {
+		return false, 0
+
+	}
+
+}
 func (o *Orders) clearAll() {
 	for i := range o.Cab {
 		o.HallDown[i] = false
@@ -44,10 +68,8 @@ func (o *Orders) clearAll() {
 
 }
 
-func (o *Orders) completeOrder(floor int, dir elevio.MotorDirection) {
+func (o *Orders) completeOrder(floor int) {
 
-	elevio.SetMotorDirection(elevio.MD_Stop)
-	elevio.SetDoorOpenLamp(true)
 	o.Cab[floor] = false
 	o.HallUp[floor] = false
 	o.HallDown[floor] = false
@@ -55,10 +77,6 @@ func (o *Orders) completeOrder(floor int, dir elevio.MotorDirection) {
 	for b := elevio.ButtonType(0); b < 3; b++ {
 		elevio.SetButtonLamp(b, floor, false)
 	}
-	time.Sleep(2000 * time.Millisecond)
-	elevio.SetDoorOpenLamp(false)
-	elevio.SetMotorDirection(dir)
-
 }
 
 //!SECTION
@@ -66,6 +84,7 @@ func (o *Orders) completeOrder(floor int, dir elevio.MotorDirection) {
 // SECTION - Elev
 type Elev struct {
 	dir       int
+	prevDir   int
 	curFloor  int
 	doorOpen  bool
 	numFloors int
@@ -74,6 +93,7 @@ type Elev struct {
 
 func (e *Elev) setup(numFloors int) {
 	e.dir = 0
+	e.prevDir = 0
 	e.curFloor = 0
 	e.doorOpen = false
 	e.numFloors = numFloors
@@ -122,6 +142,7 @@ func (e *Elev) goDown() bool {
 	}
 }
 func (e *Elev) stop() {
+	e.prevDir = e.dir
 	e.dir = 0
 	elevio.SetMotorDirection(elevio.MD_Stop)
 }
@@ -141,8 +162,72 @@ func (e *Elev) closeDoors() bool {
 	}
 
 }
-func (e *Elev) completeOrder(floor int) {
+func (e *Elev) nextOrder() {
 
+	if e.prevDir > 0 {
+		for i := e.curFloor; i < e.numFloors; i++ {
+
+			if e.orders.HallUp[i] || e.orders.Cab[i] {
+				e.goUp()
+				return
+			}
+
+		}
+	}
+
+	if e.prevDir < 0 {
+		for i := e.curFloor; i > 0; i-- {
+
+			if e.orders.HallDown[i] || e.orders.Cab[i] {
+				e.goDown()
+				return
+			}
+
+		}
+
+	}
+
+	for i := 0; i < e.numFloors; i++ {
+
+		if e.orders.Cab[i] || e.orders.HallUp[i] || e.orders.HallDown[i] {
+			if i < e.curFloor {
+				e.goDown()
+				return
+			}
+			if i > e.curFloor {
+				e.goUp()
+				return
+			}
+			// case when someone press the button of the floor where they currently are
+			e.completeOrder(e.curFloor)
+			return
+		}
+
+	}
+
+}
+func (e *Elev) completeOrder(floor int) bool {
+	if floor == e.curFloor {
+
+		tf, d := e.orders.checkOrder(floor)
+
+		if tf {
+
+			if d == 0 || d == e.dir {
+				e.stop()
+				e.openDoors()
+				e.orders.completeOrder(floor)
+				time.Sleep(Open_Door_Time * time.Second)
+				e.nextOrder()
+				e.closeDoors()
+
+				return true
+
+			}
+		}
+	}
+
+	return false
 }
 
 //!SECTION
@@ -201,21 +286,25 @@ func main() {
 
 		case a := <-drv_floors:
 			fmt.Printf("--2:%+v\n", a)
-			fmt.Println("GetFloor:", elevio.GetFloor())
-			elev.setFloor(a)
+			elev.updateFloor()
+			fmt.Println(elev.getFloor())
 
-			for i, v := range orders.Cab {
-				if i == a && v == true {
-					orders.completeOrder(a, d)
+			// for i, v := range orders.Cab {
+			// 	if i == a && v == true {
+			// 		orders.completeOrder(a, d)
 
-				} else if a == numFloors-1 {
-					d = elevio.MD_Down
-				} else if a == 0 {
-					d = elevio.MD_Up
-				}
-				elevio.SetMotorDirection(d)
+			// 	} else if a == numFloors-1 {
+			// 		d = elevio.MD_Down
+			// 	} else if a == 0 {
+			// 		d = elevio.MD_Up
+			// 	}
+			// 	elevio.SetMotorDirection(d)
+			// }
+
+		case a := <-drv_stop:
+			if a {
+				elev.stop()
 			}
-
 			//MANUAL CONTROL
 			// case a := <-drv_buttons:
 			// 	fmt.Printf("--1:%+v\n", a)
