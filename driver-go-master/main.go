@@ -105,6 +105,11 @@ func (e *Elev) setup(numFloors int) {
 }
 func (e *Elev) updateFloor() int {
 	e.curFloor = elevio.GetFloor()
+
+	if e.curFloor >= e.numFloors || e.curFloor <= 0 {
+		e.stop()
+	}
+
 	return e.curFloor
 }
 func (e *Elev) setFloor(f int) {
@@ -213,12 +218,11 @@ func (e *Elev) completeOrder(floor int) bool {
 		tf, d := e.orders.checkOrder(floor)
 
 		if tf {
-			fmt.Println("d:", d)
-			fmt.Println("dir:", e.getDirection())
-			fmt.Println(d == e.getDirection())
+			// fmt.Println("d:", d)
+			// fmt.Println("dir:", e.getDirection())
+			// fmt.Println(d == e.getDirection())
 
-			if d == 0 || d == e.getDirection() {
-				fmt.Println("-------------")
+			if d == 0 || e.dir == 0 || d == e.dir {
 				e.stop()
 				e.openDoors()
 				e.orders.completeOrder(floor)
