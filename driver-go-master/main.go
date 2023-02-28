@@ -136,8 +136,8 @@ func (e *Elev) goDown() bool {
 		return false
 
 	} else {
-		e.dir = 1
-		elevio.SetMotorDirection(elevio.MD_Up)
+		e.dir = -1
+		elevio.SetMotorDirection(elevio.MD_Down)
 		return true
 	}
 }
@@ -207,19 +207,24 @@ func (e *Elev) nextOrder() {
 
 }
 func (e *Elev) completeOrder(floor int) bool {
+	e.updateFloor()
 	if floor == e.curFloor {
 
 		tf, d := e.orders.checkOrder(floor)
 
 		if tf {
+			fmt.Println("d:", d)
+			fmt.Println("dir:", e.getDirection())
+			fmt.Println(d == e.getDirection())
 
-			if d == 0 || d == e.dir {
+			if d == 0 || d == e.getDirection() {
+				fmt.Println("-------------")
 				e.stop()
 				e.openDoors()
 				e.orders.completeOrder(floor)
 				time.Sleep(Open_Door_Time * time.Second)
-				e.nextOrder()
 				e.closeDoors()
+				e.nextOrder()
 
 				return true
 
@@ -269,6 +274,9 @@ func main() {
 		case a := <-drv_buttons:
 			elev.orders.setOrder(a.Floor, a.Button)
 			fmt.Println(elev.orders)
+			if elev.dir == 0 {
+				elev.nextOrder()
+			}
 
 		case a := <-drv_floors:
 			// fmt.Printf("--2:%+v\n", a)
