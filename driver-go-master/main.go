@@ -35,6 +35,9 @@ func (o *Orders) setOrder(floor int, button elevio.ButtonType) {
 }
 func (o Orders) checkOrder(floor int) (bool, int) {
 
+	if floor == -1 {
+		return false, 0
+	}
 	if o.Cab[floor] {
 		return true, 0
 
@@ -115,8 +118,9 @@ func (o Orders) firstUp() int {
 	}
 	return -1
 }
+
 func (o Orders) firstDown() int {
-	for i := 0; i < len(o.HallDown); i++ {
+	for i := len(o.HallDown) - 1; i > 0; i-- {
 		if o.HallDown[i] {
 			return i
 		}
@@ -140,7 +144,7 @@ type Elev struct {
 func (e *Elev) setup(numFloors int) {
 	e.dir = 0
 	e.prevDir = 0
-	e.curFloor = 0
+	e.curFloor = elevio.GetFloor()
 	e.doorOpen = false
 	e.numFloors = numFloors
 	e.orders = Orders{
@@ -148,11 +152,16 @@ func (e *Elev) setup(numFloors int) {
 		make([]bool, numFloors),
 		make([]bool, numFloors)}
 	e.orders.clearAll()
+
+	if e.curFloor == -1 {
+		e.goDown()
+	}
 }
 func (e *Elev) updateFloor() int {
 	e.curFloor = elevio.GetFloor()
 	elevio.SetFloorIndicator(e.curFloor)
-	if e.curFloor >= e.numFloors-1 || e.curFloor <= 0 {
+
+	if e.curFloor == e.numFloors-1 || e.curFloor == 0 {
 		e.stop()
 	}
 
@@ -280,17 +289,14 @@ func (e *Elev) checkOrder(floor int) bool {
 			// fmt.Println("dir:", e.getDirection())
 			// fmt.Println(d == e.getDirection())
 
-			// if e.orders.firstUp() < e.curFloor && e.orders.firstUp() != -1 {
-			// 	return false
-			// }
-			// if e.orders.firstDown() > e.curFloor && e.orders.firstDown() != -1 {
-			// 	return false
-			// }
-
 			//  cab order || not moving || same dir	  || there is no orders in
 			//                             as order    	 curr dir
 			if d == 0 || e.dir == 0 || d == e.dir {
 				return e.completeOrder(floor)
+			}
+
+			if e.orders.firstDown() > e.curFloor {
+				return false
 			}
 
 			if e.dir < 0 && e.orders.firstUp() == -1 {
@@ -300,6 +306,10 @@ func (e *Elev) checkOrder(floor int) bool {
 			if e.dir > 0 && e.orders.firstDown() == -1 {
 				return e.completeOrder(floor)
 
+			}
+			if e.orders.firstUp() == e.curFloor || e.orders.firstDown() == e.curFloor {
+
+				return e.completeOrder(floor)
 			}
 
 		}
@@ -315,7 +325,7 @@ func main() {
 	numFloors := 4
 
 	elevio.Init("localhost:15657", numFloors)
-
+	fmt.Println(elevio.GetFloor())
 	// SETUP
 	elev := Elev{}
 	elev.setup(numFloors)
@@ -352,9 +362,12 @@ func main() {
 			}
 
 		case a := <-drv_obstr:
-			if a {
+			if a && elev.doorOpen {
+				fmt.Println(a)
+				fmt.Println(elev.doorOpen)
+
 				elev.stop()
-			} else {
+			} else if elev.doorOpen {
 				elev.closeDoors()
 				if !elev.checkOrder(elev.curFloor) {
 					elev.nextOrder()
