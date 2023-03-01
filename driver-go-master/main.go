@@ -140,7 +140,7 @@ type Elev struct {
 	orders   Orders
 }
 
-func (e *Elev) setup() {
+func (e *Elev) init() {
 	e.dir = 0
 	e.prevDir = 0
 	e.curFloor = elevio.GetFloor()
@@ -283,9 +283,6 @@ func (e *Elev) checkOrder(floor int) bool {
 		tf, d := e.orders.checkOrder(floor)
 
 		if tf {
-			// fmt.Println("d:", d)
-			// fmt.Println("dir:", e.getDirection())
-			// fmt.Println(d == e.getDirection())
 
 			//  cab order || not moving || same dir	  || there is no orders in
 			//                             as order    	 curr dir
@@ -321,10 +318,10 @@ func (e *Elev) checkOrder(floor int) bool {
 func main() {
 
 	elevio.Init("localhost:15657", Num_Of_Flors)
-	fmt.Println(elevio.GetFloor())
+
 	// SETUP
 	elev := Elev{}
-	elev.setup()
+	elev.init()
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -340,14 +337,14 @@ func main() {
 		select {
 
 		case a := <-drv_buttons:
+
 			elev.orders.setOrder(a.Floor, a.Button)
-			fmt.Println(elev.orders)
+			// fmt.Println(elev.orders)
 			if elev.dir == 0 {
 				elev.nextOrder()
 			}
 
 		case a := <-drv_floors:
-			// fmt.Printf("--2:%+v\n", a)
 			elev.updateFloor()
 			elev.checkOrder(a)
 			fmt.Println("current floor:", elev.getFloor())
@@ -359,12 +356,13 @@ func main() {
 
 		case a := <-drv_obstr:
 			if a && elev.doorOpen {
-				fmt.Println(a)
-				fmt.Println(elev.doorOpen)
 
 				elev.stop()
+
 			} else if elev.doorOpen {
+
 				elev.closeDoors()
+
 				if !elev.checkOrder(elev.curFloor) {
 					elev.nextOrder()
 				}
