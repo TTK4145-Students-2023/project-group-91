@@ -7,6 +7,7 @@ import (
 )
 
 const Open_Door_Time = 2
+const Num_Of_Flors = 4
 
 // SECTION - Orders
 type Orders struct {
@@ -106,10 +107,27 @@ func (o *Orders) isAny(butType int) bool {
 	}
 	return false
 }
+func (o Orders) firstUp() int {
+	for i, v := range o.HallUp {
+		if v {
+			return i
+		}
+	}
+	return -1
+}
+func (o Orders) firstDown() int {
+	for i := 0; i < len(o.HallDown); i++ {
+		if o.HallDown[i] {
+			return i
+		}
+	}
+	return -1
+}
 
 //!SECTION
 
 // SECTION - Elev
+
 type Elev struct {
 	dir       int
 	prevDir   int
@@ -132,8 +150,8 @@ func (e *Elev) setup(numFloors int) {
 	e.orders.clearAll()
 }
 func (e *Elev) updateFloor() int {
-
 	e.curFloor = elevio.GetFloor()
+	elevio.SetFloorIndicator(e.curFloor)
 	if e.curFloor >= e.numFloors-1 || e.curFloor <= 0 {
 		e.stop()
 	}
@@ -232,14 +250,26 @@ func (e *Elev) nextOrder() {
 				return
 			}
 			// case when someone press the button of the floor where they currently are
-			e.completeOrder(e.curFloor)
+			e.checkOrder(e.curFloor)
 			return
 		}
 
 	}
 
 }
+
 func (e *Elev) completeOrder(floor int) bool {
+	e.stop()
+	e.openDoors()
+	e.orders.completeOrder(floor)
+	time.Sleep(Open_Door_Time * time.Second)
+	e.closeDoors()
+	e.nextOrder()
+
+	return true
+}
+
+func (e *Elev) checkOrder(floor int) bool {
 	e.updateFloor()
 	if floor == e.curFloor {
 
@@ -250,17 +280,25 @@ func (e *Elev) completeOrder(floor int) bool {
 			// fmt.Println("dir:", e.getDirection())
 			// fmt.Println(d == e.getDirection())
 
+			// if e.orders.firstUp() < e.curFloor && e.orders.firstUp() != -1 {
+			// 	return false
+			// }
+			// if e.orders.firstDown() > e.curFloor && e.orders.firstDown() != -1 {
+			// 	return false
+			// }
+
 			//  cab order || not moving || same dir	  || there is no orders in
 			//                             as order    	 curr dir
-			if d == 0 || e.dir == 0 || d == e.dir || !e.orders.isAny(e.dir) {
-				e.stop()
-				e.openDoors()
-				e.orders.completeOrder(floor)
-				time.Sleep(Open_Door_Time * time.Second)
-				e.closeDoors()
-				e.nextOrder()
+			if d == 0 || e.dir == 0 || d == e.dir {
+				return e.completeOrder(floor)
+			}
 
-				return true
+			if e.dir < 0 && e.orders.firstUp() == -1 {
+				return e.completeOrder(floor)
+
+			}
+			if e.dir > 0 && e.orders.firstDown() == -1 {
+				return e.completeOrder(floor)
 
 			}
 
@@ -278,18 +316,7 @@ func main() {
 
 	elevio.Init("localhost:15657", numFloors)
 
-	var d elevio.MotorDirection = elevio.MD_Up
-	elevio.SetMotorDirection(d)
-
 	// SETUP
-
-	// creating orders list
-	orders := Orders{
-		make([]bool, numFloors),
-		make([]bool, numFloors),
-		make([]bool, numFloors)}
-	orders.clearAll()
-
 	elev := Elev{}
 	elev.setup(numFloors)
 
@@ -316,20 +343,8 @@ func main() {
 		case a := <-drv_floors:
 			// fmt.Printf("--2:%+v\n", a)
 			elev.updateFloor()
-			elev.completeOrder(a)
+			elev.checkOrder(a)
 			fmt.Println("current floor:", elev.getFloor())
-
-			// for i, v := range orders.Cab {
-			// 	if i == a && v == true {
-			// 		orders.completeOrder(a, d)
-
-			// 	} else if a == numFloors-1 {
-			// 		d = elevio.MD_Down
-			// 	} else if a == 0 {
-			// 		d = elevio.MD_Up
-			// 	}
-			// 	elevio.SetMotorDirection(d)
-			// }
 
 		case a := <-drv_stop:
 			if a {
@@ -339,7 +354,13 @@ func main() {
 		case a := <-drv_obstr:
 			if a {
 				elev.stop()
+			} else {
+				elev.closeDoors()
+				if !elev.checkOrder(elev.curFloor) {
+					elev.nextOrder()
+				}
 			}
+
 			//MANUAL CONTROL
 			// case a := <-drv_buttons:
 			// 	fmt.Printf("--1:%+v\n", a)
