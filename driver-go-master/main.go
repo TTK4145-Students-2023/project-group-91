@@ -79,6 +79,34 @@ func (o *Orders) completeOrder(floor int) {
 	}
 }
 
+func (o *Orders) isAny(butType int) bool {
+	if butType < 0 {
+		for _, v := range o.HallDown {
+			if v {
+				return true
+			}
+		}
+		return false
+	}
+	if butType > 0 {
+		for _, v := range o.HallUp {
+			if v {
+				return true
+			}
+		}
+		return false
+	}
+	if butType == 0 {
+		for _, v := range o.Cab {
+			if v {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
 //!SECTION
 
 // SECTION - Elev
@@ -104,9 +132,9 @@ func (e *Elev) setup(numFloors int) {
 	e.orders.clearAll()
 }
 func (e *Elev) updateFloor() int {
-	e.curFloor = elevio.GetFloor()
 
-	if e.curFloor >= e.numFloors || e.curFloor <= 0 {
+	e.curFloor = elevio.GetFloor()
+	if e.curFloor >= e.numFloors-1 || e.curFloor <= 0 {
 		e.stop()
 	}
 
@@ -222,7 +250,9 @@ func (e *Elev) completeOrder(floor int) bool {
 			// fmt.Println("dir:", e.getDirection())
 			// fmt.Println(d == e.getDirection())
 
-			if d == 0 || e.dir == 0 || d == e.dir {
+			//  cab order || not moving || same dir	  || there is no orders in
+			//                             as order    	 curr dir
+			if d == 0 || e.dir == 0 || d == e.dir || !e.orders.isAny(e.dir) {
 				e.stop()
 				e.openDoors()
 				e.orders.completeOrder(floor)
@@ -233,6 +263,7 @@ func (e *Elev) completeOrder(floor int) bool {
 				return true
 
 			}
+
 		}
 	}
 
