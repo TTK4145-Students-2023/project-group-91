@@ -133,24 +133,22 @@ func (o Orders) firstDown() int {
 // SECTION - Elev
 
 type Elev struct {
-	dir       int
-	prevDir   int
-	curFloor  int
-	doorOpen  bool
-	numFloors int
-	orders    Orders
+	dir      int
+	prevDir  int
+	curFloor int
+	doorOpen bool
+	orders   Orders
 }
 
-func (e *Elev) setup(numFloors int) {
+func (e *Elev) setup() {
 	e.dir = 0
 	e.prevDir = 0
 	e.curFloor = elevio.GetFloor()
 	e.doorOpen = false
-	e.numFloors = numFloors
 	e.orders = Orders{
-		make([]bool, numFloors),
-		make([]bool, numFloors),
-		make([]bool, numFloors)}
+		make([]bool, Num_Of_Flors),
+		make([]bool, Num_Of_Flors),
+		make([]bool, Num_Of_Flors)}
 	e.orders.clearAll()
 
 	if e.curFloor == -1 {
@@ -161,7 +159,7 @@ func (e *Elev) updateFloor() int {
 	e.curFloor = elevio.GetFloor()
 	elevio.SetFloorIndicator(e.curFloor)
 
-	if e.curFloor == e.numFloors-1 || e.curFloor == 0 {
+	if e.curFloor == Num_Of_Flors-1 || e.curFloor == 0 {
 		e.stop()
 	}
 
@@ -180,7 +178,7 @@ func (e *Elev) goUp() bool {
 	if e.doorOpen {
 		return false
 
-	} else if e.curFloor == e.numFloors-1 {
+	} else if e.curFloor == Num_Of_Flors-1 {
 		return false
 	} else {
 		e.dir = 1
@@ -225,7 +223,7 @@ func (e *Elev) closeDoors() bool {
 func (e *Elev) nextOrder() {
 
 	if e.prevDir > 0 {
-		for i := e.curFloor; i < e.numFloors; i++ {
+		for i := e.curFloor; i < Num_Of_Flors; i++ {
 
 			if e.orders.HallUp[i] || e.orders.Cab[i] {
 				e.goUp()
@@ -247,7 +245,7 @@ func (e *Elev) nextOrder() {
 
 	}
 
-	for i := 0; i < e.numFloors; i++ {
+	for i := 0; i < Num_Of_Flors; i++ {
 
 		if e.orders.Cab[i] || e.orders.HallUp[i] || e.orders.HallDown[i] {
 			if i < e.curFloor {
@@ -322,13 +320,11 @@ func (e *Elev) checkOrder(floor int) bool {
 
 func main() {
 
-	numFloors := 4
-
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:15657", Num_Of_Flors)
 	fmt.Println(elevio.GetFloor())
 	// SETUP
 	elev := Elev{}
-	elev.setup(numFloors)
+	elev.setup()
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -404,7 +400,7 @@ func main() {
 
 			// case a := <-drv_stop:
 			// 	fmt.Printf("--4:%+v\n", a)
-			// 	for f := 0; f < numFloors; f++ {
+			// 	for f := 0; f < Num_Of_Flors; f++ {
 			// 		for b := elevio.ButtonType(0); b < 3; b++ {
 			// 			elevio.SetButtonLamp(b, f, false)
 			// 		}
