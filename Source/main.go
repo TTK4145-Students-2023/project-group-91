@@ -1,7 +1,8 @@
 package main
 
 import (
-	"Driver-go/elevio"
+	"Source/elev"
+	"Source/elevio"
 	"fmt"
 )
 
@@ -13,7 +14,7 @@ func main() {
 	elevio.Init("localhost:15657", Num_Of_Flors)
 
 	// SETUP
-	elev := elevio.Elev{}
+	elev := elev.Elev{}
 	elev.Init()
 
 	drv_buttons := make(chan elevio.ButtonEvent)
