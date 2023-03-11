@@ -6,19 +6,47 @@ import (
 	"time"
 )
 
+type ElevMode int
+
+const (
+	Master ElevMode = 0
+	Backup ElevMode = 1 // do we need that? or each slave will be a backup?
+	Slave  ElevMode = 2
+)
+
+type Directions int
+
+const (
+	Up   Directions = 1
+	Cab  Directions = 0
+	Down Directions = -1
+)
+
 type Elev struct {
 	Dir      int
 	PrevDir  int
 	CurFloor int
 	DoorOpen bool
 	Orders   Orders
+	Mode     ElevMode
+	ID       int
+}
+
+func (e *Elev) ChangeMode(mode ElevMode) {
+	e.Mode = mode
+	// "reboot" into different mode
+}
+func (e *Elev) Whoami() ElevMode {
+	return e.Mode
 }
 
 func (e *Elev) Init() {
+	// setup default values for elevator
 	e.Dir = 0
 	e.PrevDir = 0
 	e.CurFloor = elevio.GetFloor()
 	e.DoorOpen = false
+	e.Mode = Slave
 	e.Orders = Orders{
 		HallUp:   make([]bool, conf.Num_Of_Flors),
 		HallDown: make([]bool, conf.Num_Of_Flors),
@@ -38,9 +66,6 @@ func (e *Elev) UpdateFloor() int {
 	}
 
 	return e.CurFloor
-}
-func (e *Elev) SetFloor(f int) {
-	e.CurFloor = f
 }
 func (e Elev) GetDirection() int {
 	return e.Dir
@@ -95,7 +120,7 @@ func (e *Elev) CloseDoors() bool {
 
 }
 func (e *Elev) NextOrder() {
-
+	// going for the next order
 	if e.PrevDir > 0 {
 		for i := e.CurFloor; i < conf.Num_Of_Flors; i++ {
 
@@ -131,7 +156,7 @@ func (e *Elev) NextOrder() {
 				return
 			}
 			// case when someone press the button of the floor where they currently are
-			e.CheckOrder(e.CurFloor)
+			e.ShouldIstop(e.CurFloor)
 			return
 		}
 
@@ -140,17 +165,21 @@ func (e *Elev) NextOrder() {
 }
 
 func (e *Elev) CompleteOrder(floor int) bool {
+	// stop, open doors, wait, close, go for next order
 	e.Stop()
 	e.OpenDoors()
 	e.Orders.CompleteOrder(floor)
 	time.Sleep(conf.Open_Door_Time * time.Second)
-	e.CloseDoors()
+	for !e.CloseDoors() {
+
+	}
 	e.NextOrder()
 
 	return true
 }
 
-func (e *Elev) CheckOrder(floor int) bool {
+func (e *Elev) ShouldIstop(floor int) bool {
+	// return true if there is an order on current floor "for us" - in same direction or order was from cabin
 	e.UpdateFloor()
 	if floor == e.CurFloor {
 
@@ -159,26 +188,31 @@ func (e *Elev) CheckOrder(floor int) bool {
 		if tf {
 
 			//  cab order || not moving || same dir	  || there is no orders in
-			//                             as order    	 curr dir
+			//                          || as order   || curr dir
 			if d == 0 || e.Dir == 0 || d == e.Dir {
-				return e.CompleteOrder(floor)
+				// return e.CompleteOrder(floor)
+				go e.CompleteOrder(floor)
 			}
 
 			if e.Orders.FirstDown() > e.CurFloor {
 				return false
 			}
 
+			//
 			if e.Dir < 0 && e.Orders.FirstUp() == -1 {
-				return e.CompleteOrder(floor)
+				// return e.CompleteOrder(floor)
+				go e.CompleteOrder(floor)
 
 			}
 			if e.Dir > 0 && e.Orders.FirstDown() == -1 {
-				return e.CompleteOrder(floor)
+				// return e.CompleteOrder(floor)
+				go e.CompleteOrder(floor)
 
 			}
 			if e.Orders.FirstUp() == e.CurFloor || e.Orders.FirstDown() == e.CurFloor {
 
-				return e.CompleteOrder(floor)
+				// return e.CompleteOrder(floor)
+				go e.CompleteOrder(floor)
 			}
 
 		}

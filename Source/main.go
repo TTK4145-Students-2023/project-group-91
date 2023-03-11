@@ -30,26 +30,30 @@ func main() {
 	for {
 		select {
 
-		case a := <-drv_buttons:
+		case button := <-drv_buttons:
 
-			elev.Orders.SetOrder(a.Floor, a.Button)
-			// fmt.Println(elev.orders)
-			if elev.Dir == 0 {
-				elev.NextOrder()
+			elev.Orders.SetOrder(button.Floor, button.Button)
+
+			if button.Floor == elevio.GetFloor() {
+				go elev.CompleteOrder(elev.GetFloor())
+
+			} else if elev.Dir == 0 {
+
+				go elev.NextOrder()
 			}
 
-		case a := <-drv_floors:
+		case floor := <-drv_floors:
 			elev.UpdateFloor()
-			elev.CheckOrder(a)
+			elev.ShouldIstop(floor)
 			fmt.Println("current floor:", elev.GetFloor())
 
-		case a := <-drv_stop:
-			if a {
+		case stop := <-drv_stop:
+			if stop {
 				elev.Stop()
 			}
 
-		case a := <-drv_obstr:
-			if a && elev.DoorOpen {
+		case obstr := <-drv_obstr:
+			if obstr && elev.DoorOpen {
 
 				elev.Stop()
 
@@ -57,46 +61,11 @@ func main() {
 
 				elev.CloseDoors()
 
-				if !elev.CheckOrder(elev.CurFloor) {
+				if !elev.ShouldIstop(elev.CurFloor) {
 					elev.NextOrder()
 				}
 			}
 
-			//MANUAL CONTROL
-			// case a := <-drv_buttons:
-			// 	fmt.Printf("--1:%+v\n", a)
-			// 	if a.Button == 2 {
-
-			// 		if a.Floor == 0 {
-			// 			d = elevio.MD_Down
-			// 		} else if a.Floor == 1 {
-			// 			d = elevio.MD_Stop
-			// 		} else if a.Floor == 2 {
-			// 			d = elevio.MD_Up
-			// 		}
-
-			// 		elevio.SetMotorDirection(d)
-
-			// 	}
-			// case a := <-drv_buttons:
-			// 	fmt.Printf("--1:%+v\n", a)
-			// 	elevio.SetButtonLamp(a.Button, a.Floor, true)
-
-			// case a := <-drv_obstr:
-			// 	fmt.Printf("--3:%+v\n", a)
-			// 	if a {
-			// 		elevio.SetMotorDirection(elevio.MD_Stop)
-			// 	} else {
-			// 		elevio.SetMotorDirection(d)
-			// 	}
-
-			// case a := <-drv_stop:
-			// 	fmt.Printf("--4:%+v\n", a)
-			// 	for f := 0; f < Num_Of_Flors; f++ {
-			// 		for b := elevio.ButtonType(0); b < 3; b++ {
-			// 			elevio.SetButtonLamp(b, f, false)
-			// 		}
-			// 	}
 		}
 	}
 }

@@ -26,7 +26,7 @@ func (o *Orders) SetOrder(floor int, button elevio.ButtonType) {
 
 }
 func (o Orders) CheckOrder(floor int) (bool, int) {
-
+	// check of there is any order on current floor and return true/false and order type
 	if floor == -1 {
 		return false, 0
 	}
@@ -66,13 +66,23 @@ func (o *Orders) ClearAll() {
 
 func (o *Orders) CompleteOrder(floor int) {
 
+	// if dir < 0 {
+	// 	o.HallDown[floor] = false
+	// 	elevio.SetButtonLamp(1, floor, false)
+
+	// } else if dir > 0 {
+	// 	o.HallUp[floor] = false
+	// 	elevio.SetButtonLamp(0, floor, false)
+
+	// }
+
 	o.Cab[floor] = false
 	o.HallUp[floor] = false
 	o.HallDown[floor] = false
+	elevio.SetButtonLamp(0, floor, false)
+	elevio.SetButtonLamp(1, floor, false)
+	elevio.SetButtonLamp(2, floor, false)
 
-	for b := elevio.ButtonType(0); b < 3; b++ {
-		elevio.SetButtonLamp(b, floor, false)
-	}
 }
 
 func (o *Orders) IsAny(butType int) bool {
