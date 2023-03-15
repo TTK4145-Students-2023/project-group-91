@@ -3,15 +3,8 @@ package elev
 import (
 	"Source/conf"
 	"Source/elevio"
+	"fmt"
 	"time"
-)
-
-type ElevMode int
-
-const (
-	Master ElevMode = 0
-	Backup ElevMode = 1 // do we need that? or each slave will be a backup?
-	Slave  ElevMode = 2
 )
 
 type Directions int
@@ -28,25 +21,40 @@ type Elev struct {
 	CurFloor int
 	DoorOpen bool
 	Orders   Orders
-	Mode     ElevMode
+	Mode     conf.ElevMode
 	ID       int
 }
 
-func (e *Elev) ChangeMode(mode ElevMode) {
+func (e *Elev) ChangeMode(mode conf.ElevMode) {
 	e.Mode = mode
+
+	if e.Mode == conf.Master {
+		fmt.Println("I'm The Master now!")
+	} else if e.Mode == conf.Slave {
+		fmt.Println("I'm Slave now")
+	}
 	// "reboot" into different mode
 }
-func (e *Elev) Whoami() ElevMode {
+func (e *Elev) Whoami() conf.ElevMode {
 	return e.Mode
 }
-
+func (e Elev) GetID_I() int {
+	return e.ID
+}
+func (e Elev) GetID_S() string {
+	return fmt.Sprint(e.ID)
+}
+func (e *Elev) SetID(id int) {
+	e.ID = id
+}
 func (e *Elev) Init() {
 	// setup default values for elevator
 	e.Dir = 0
 	e.PrevDir = 0
 	e.CurFloor = elevio.GetFloor()
 	e.DoorOpen = false
-	e.Mode = Slave
+	e.Mode = conf.Slave
+	e.ID = -1
 	e.Orders = Orders{
 		HallUp:   make([]bool, conf.Num_Of_Flors),
 		HallDown: make([]bool, conf.Num_Of_Flors),
