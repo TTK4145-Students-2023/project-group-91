@@ -1,4 +1,3 @@
-// TODO - Fix door which stops the program
 // TODO - serve orders only in one direction (dont complete each order on one floor)
 
 // buglist:
@@ -31,7 +30,6 @@ type Msg struct {
 }
 
 func PrepareMsg(m string, e elev.Elev) Msg {
-	// fmt.Println("FUNC:", e.GetID_I(), e.CurFloor, e.GetMode())
 	msg := Msg{
 		SenderID:   e.GetID_I(),
 		SenderRole: e.GetMode(),

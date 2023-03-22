@@ -48,9 +48,11 @@ func (e Elev) GetMode() string {
 	}
 }
 func (e Elev) GetID_I() int {
+	// returns ID as int
 	return e.ID
 }
 func (e Elev) GetID_S() string {
+	// returns ID as string
 	return fmt.Sprint(e.ID)
 }
 func (e *Elev) SetID(id int) {
