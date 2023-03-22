@@ -184,7 +184,10 @@ func (e *Elev) NextOrder() {
 func (e *Elev) CompleteOrder(floor int) bool {
 	// stop, open doors, wait, close, go for next order
 	e.Stop()
-	e.OpenDoors()
+	if !e.DoorOpen {
+		e.OpenDoors()
+
+	}
 	e.Orders.CompleteOrder(floor)
 	time.Sleep(conf.Open_Door_Time * time.Second)
 	for !e.CloseDoors() {
