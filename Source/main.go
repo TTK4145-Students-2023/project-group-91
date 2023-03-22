@@ -1,7 +1,7 @@
 // TODO - serve orders only in one direction (dont complete each order on one floor)
 
 // buglist:
-// FIXME - sometimes when pressing buttons while the elevator is between two floors there is an error: "tried to set floor indicator to not existing floor"
+// FIXME[epic=bugs] - sometimes when pressing buttons while the elevator is between two floors there is an error: "tried to set floor indicator to not existing floor"
 
 package main
 
