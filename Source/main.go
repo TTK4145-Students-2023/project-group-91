@@ -1,4 +1,9 @@
 // TODO - Fix door which stops the program
+// TODO - serve orders only in one direction (dont complete each order on one floor)
+
+// buglist:
+// FIXME - sometimes when pressing buttons while the elevator is between two floors there is an error: "tried to set floor indicator to not existing floor"
+
 package main
 
 import (
@@ -62,6 +67,22 @@ func AmiAlone(peers []string) bool {
 	} else {
 		return false
 	}
+}
+
+type Msg struct {
+	SenderID   int
+	SenderRole string
+	Message    string
+}
+
+func PrepareMsg(m string, e elev.Elev) Msg {
+	// fmt.Println("FUNC:", e.GetID_I(), e.CurFloor, e.GetMode())
+	msg := Msg{
+		SenderID:   e.GetID_I(),
+		SenderRole: e.GetMode(),
+		Message:    m}
+
+	return msg
 }
 
 func main() {
@@ -147,8 +168,8 @@ func main() {
 	//!SECTION -----------------------
 
 	// ----- Messages channels ---------
-	sendMsg := make(chan string)
-	rcvdMsg := make(chan string)
+	sendMsg := make(chan Msg)
+	rcvdMsg := make(chan Msg)
 
 	// ----- Drivers channels -----------
 	drv_buttons := make(chan elevio.ButtonEvent)
@@ -174,7 +195,10 @@ func main() {
 			elev.Orders.SetOrder(button.Floor, button.Button)
 
 			if button.Floor == elevio.GetFloor() {
-				go elev.CompleteOrder(elev.GetFloor())
+				if !elev.DoorOpen {
+
+					go elev.CompleteOrder(elev.GetFloor())
+				}
 
 			} else if elev.Dir == 0 {
 
@@ -185,6 +209,7 @@ func main() {
 			elev.UpdateFloor()
 			elev.ShouldIstop(floor)
 			fmt.Println("current floor:", elev.GetFloor())
+			sendMsg <- PrepareMsg("Im on floor "+fmt.Sprint(elev.GetFloor()), elev)
 
 		case stop := <-drv_stop:
 			if stop {
@@ -205,14 +230,32 @@ func main() {
 				}
 			}
 
+		// ------- Messages --------
+		case m := <-rcvdMsg:
+			if m.SenderID != elev.GetID_I() {
+				if m.SenderRole == "M" {
+					// ---- Messages from Master
+					fmt.Println("m:	", m)
+
+				} else {
+					// ---- Messages from Others
+					fmt.Println("SenderID:	", m.SenderID)
+					fmt.Println("SenderRole:	", m.SenderRole)
+					fmt.Println("Msg:		", m.Message)
+				}
+
+			}
+
 		// ----------- peer system, M/S control -------------
 		case p := <-peerUpdateCh:
 
 			// ---- network info ----
+
 			// fmt.Printf("Peer update:\n")
 			fmt.Printf("  Elevs alive:    %q\n", p.Peers)
 			// fmt.Printf("  New:      %q\n", p.New)
 			// fmt.Printf("  Disconnected Elev:     %q\n", p.Lost)
+
 			// ----------------------
 
 			// if there is 0 or more than one masters it means that we have to choose the new one
