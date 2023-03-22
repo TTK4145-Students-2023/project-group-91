@@ -13,6 +13,7 @@ import (
 	"Source/network/bcast"
 	"Source/network/localip"
 	"Source/network/peers"
+	"Source/roles"
 	"flag"
 	"fmt"
 	"strconv"
@@ -22,52 +23,6 @@ import (
 
 const Open_Door_Time = 2
 const Num_Of_Flors = 4
-
-func IsMasterAlive(peers []string) bool {
-	for _, v := range peers {
-		if v[0] == 'M' {
-			return true
-		}
-	}
-	return false
-}
-func HowManyMasters(peers []string) int {
-	i := 0
-	for _, v := range peers {
-		if v[0] == 'M' {
-			i++
-		}
-	}
-	return i
-}
-func MastersID(peers []string) string {
-
-	for _, v := range peers {
-		if v[0] == 'M' {
-			return v[1:]
-		}
-	}
-	return ""
-}
-
-func MaxIdAlive(peers []string) int {
-	max := 0
-	for _, v := range peers {
-		x, _ := strconv.Atoi(v[1:])
-		if x > max {
-			max = x
-
-		}
-	}
-	return max
-}
-func AmiAlone(peers []string) bool {
-	if len(peers) == 1 {
-		return true
-	} else {
-		return false
-	}
-}
 
 type Msg struct {
 	SenderID   int
@@ -141,7 +96,7 @@ func main() {
 
 		select {
 		case p := <-peerUpdateCh:
-			if IsMasterAlive(p.Peers) {
+			if roles.IsMasterAlive(p.Peers) {
 				isMasterAlive = true
 				elev.ChangeMode(conf.Slave)
 			}
@@ -261,8 +216,8 @@ func main() {
 			// if there is 0 or more than one masters it means that we have to choose the new one
 			// new master is choosen based on the highest ID in the nwtwork
 			// if there is more masters rest will be degraded
-			if HowManyMasters(p.Peers) != 1 {
-				if maxID := MaxIdAlive(p.Peers); maxID == elev.GetID_I() {
+			if roles.HowManyMasters(p.Peers) != 1 {
+				if maxID := roles.MaxIdAlive(p.Peers); maxID == elev.GetID_I() {
 					elev.ChangeMode(conf.Master)
 				} else {
 					elev.ChangeMode(conf.Slave)
