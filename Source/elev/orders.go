@@ -6,24 +6,27 @@ type Orders struct {
 	HallUp   []bool
 	HallDown []bool
 	Cab      []bool
-}
+	NumOfOrders int
+} 
 
 func (o *Orders) SetOrder(floor int, button elevio.ButtonType) {
 
 	if button == 0 {
 		o.HallUp[floor] = true
 		elevio.SetButtonLamp(button, floor, true)
+		o.NumOfOrders++
 
 	} else if button == 2 {
 		o.Cab[floor] = true
 		elevio.SetButtonLamp(button, floor, true)
+		o.NumOfOrders++
 
 	} else if button == 1 {
 		o.HallDown[floor] = true
 		elevio.SetButtonLamp(button, floor, true)
+		o.NumOfOrders++
 
 	}
-
 }
 func (o Orders) CheckOrder(floor int) (bool, int) {
 	// check of there is any order on current floor and return true/false and order type
@@ -61,9 +64,9 @@ func (o *Orders) ClearAll() {
 			elevio.SetButtonLamp(b, i, false)
 		}
 	}
+	o.NumOfOrders = 0
 
 }
-
 func (o *Orders) CompleteOrder(floor int) {
 
 	// if dir < 0 {
@@ -79,6 +82,7 @@ func (o *Orders) CompleteOrder(floor int) {
 	o.Cab[floor] = false
 	o.HallUp[floor] = false
 	o.HallDown[floor] = false
+	o.NumOfOrders--
 	elevio.SetButtonLamp(0, floor, false)
 	elevio.SetButtonLamp(1, floor, false)
 	elevio.SetButtonLamp(2, floor, false)
@@ -112,6 +116,7 @@ func (o *Orders) IsAny(butType int) bool {
 	}
 	return false
 }
+
 func (o Orders) FirstUp() int {
 	for i, v := range o.HallUp {
 		if v {
@@ -130,4 +135,10 @@ func (o Orders) FirstDown() int {
 	return -1
 }
 
+func (o Orders) howManyOrders() int {
+	return o.NumOfOrders
+}
+
+
+ 
 //!SECTION
