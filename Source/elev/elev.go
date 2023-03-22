@@ -35,8 +35,17 @@ func (e *Elev) ChangeMode(mode conf.ElevMode) {
 	}
 	// "reboot" into different mode
 }
-func (e *Elev) Whoami() conf.ElevMode {
+func (e Elev) Whoami() conf.ElevMode {
 	return e.Mode
+}
+func (e Elev) GetMode() string {
+	if e.Mode == 0 {
+		return "M"
+	} else if e.Mode == 1 {
+		return "S"
+	} else {
+		return ""
+	}
 }
 func (e Elev) GetID_I() int {
 	return e.ID

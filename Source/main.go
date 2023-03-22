@@ -25,17 +25,42 @@ func IsMasterAlive(peers []string) bool {
 	}
 	return false
 }
+func HowManyMasters(peers []string) int {
+	i := 0
+	for _, v := range peers {
+		if v[0] == 'M' {
+			i++
+		}
+	}
+	return i
+}
+func MastersID(peers []string) string {
+
+	for _, v := range peers {
+		if v[0] == 'M' {
+			return v[1:]
+		}
+	}
+	return ""
+}
 
 func MaxIdAlive(peers []string) int {
 	max := 0
-	for _, p := range peers {
-		x, _ := strconv.Atoi(p)
+	for _, v := range peers {
+		x, _ := strconv.Atoi(v[1:])
 		if x > max {
 			max = x
 
 		}
 	}
 	return max
+}
+func AmiAlone(peers []string) bool {
+	if len(peers) == 1 {
+		return true
+	} else {
+		return false
+	}
 }
 
 func main() {
@@ -50,7 +75,10 @@ func main() {
 	flag.StringVar(&port, "port", "15657", "simulator port") //custom port for localhost
 	flag.Parse()
 
-	//SECTION - Setting elevs ID
+	//SECTION ---- Setting elevs ID -----
+	// our ID is based on the last IP's octet
+	// e.g. 192.168.0.35
+	// 				   ^----[35]---- this is our ID
 
 	if id == "" {
 		localIP, err := localip.LocalIP()
@@ -64,34 +92,34 @@ func main() {
 	}
 	iid, _ := strconv.Atoi(id)
 
-	//!SECTION
+	//!SECTION -----------------------
 
 	fmt.Println("ID:", id)
 	fmt.Println("PORT:", port)
 
-	isMasterAlive := false
-
 	elevio.Init("localhost:"+port, Num_Of_Flors)
 
+	// ----- creating elev struct and initialization -----
 	elev := elev.Elev{}
 	elev.Init()
 	elev.SetID(iid)
-	// SETUP
 
-	//SECTION - Setting elevs Role
+	//SECTION ----- Setting elevs Role -----
 
+	isMasterAlive := false
+
+	role_chan := make(chan string, 1)
 	peerUpdateCh := make(chan peers.PeerUpdate)
-	peerTxEnable_1 := make(chan bool)
+
 	go peers.Receiver(15647, peerUpdateCh)
-	go peers.Transmitter(15647, elev.GetID_S(), peerTxEnable_1)
 
 	timer := 0
-
+	// waiting for any signal from Master ...
 	for timer < conf.Wait_For_Master_Time && !isMasterAlive {
 
 		select {
 		case p := <-peerUpdateCh:
-			if MaxIdAlive(p.Peers) != elev.GetID_I() {
+			if IsMasterAlive(p.Peers) {
 				isMasterAlive = true
 				elev.ChangeMode(conf.Slave)
 			}
@@ -103,13 +131,17 @@ func main() {
 		}
 	}
 
+	peerTxEnable := make(chan bool)
+	go peers.Transmitter(15647, elev.GetID_S(), role_chan, peerTxEnable)
+
+	// ... if there is no signal after specific time it means that there is no master
+	// so I can become a master
+
 	if timer >= conf.Wait_For_Master_Time && !isMasterAlive {
 		elev.ChangeMode(conf.Master)
-
 	}
-	peerTxEnable_1 <- false
-	peerTxEnable := make(chan bool)
-	go peers.Transmitter(15647, elev.GetID_S(), peerTxEnable)
+
+	role_chan <- elev.GetMode()
 
 	//!SECTION
 

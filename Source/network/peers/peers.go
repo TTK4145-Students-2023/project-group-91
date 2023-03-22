@@ -17,19 +17,21 @@ type PeerUpdate struct {
 const interval = 15 * time.Millisecond
 const timeout = 500 * time.Millisecond
 
-func Transmitter(port int, id string, transmitEnable <-chan bool) {
+func Transmitter(port int, id string, role chan string, transmitEnable <-chan bool) {
 
 	conn := conn.DialBroadcastUDP(port)
 	addr, _ := net.ResolveUDPAddr("udp4", fmt.Sprintf("255.255.255.255:%d", port))
 
 	enable := true
+	r := ""
 	for {
 		select {
 		case enable = <-transmitEnable:
+		case r = <-role:
 		case <-time.After(interval):
 		}
 		if enable {
-			conn.WriteTo([]byte(id), addr)
+			conn.WriteTo([]byte(r+id), addr)
 		}
 	}
 }
@@ -75,7 +77,7 @@ func Receiver(port int, peerUpdateCh chan<- PeerUpdate) {
 		if updated {
 			p.Peers = make([]string, 0, len(lastSeen))
 
-			for k, _ := range lastSeen {
+			for k := range lastSeen {
 				p.Peers = append(p.Peers, k)
 			}
 
