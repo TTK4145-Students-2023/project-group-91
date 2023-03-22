@@ -3,10 +3,17 @@ package elev
 import (
 	"Source/conf"
 	"Source/elevio"
-	"fmt"
 	"time"
 )
 
+type ElevMode int
+
+const (
+	Master ElevMode = 0
+	Backup ElevMode = 1 // do we need that? or each slave will be a backup?
+	Slave  ElevMode = 2
+)
+ 
 type Directions int
 
 const (
@@ -21,51 +28,25 @@ type Elev struct {
 	CurFloor int
 	DoorOpen bool
 	Orders   Orders
-	Mode     conf.ElevMode
+	Mode     ElevMode
 	ID       int
 }
 
-func (e *Elev) ChangeMode(mode conf.ElevMode) {
+func (e *Elev) ChangeMode(mode ElevMode) {
 	e.Mode = mode
-
-	if e.Mode == conf.Master {
-		fmt.Println("I'm The Master now!")
-	} else if e.Mode == conf.Slave {
-		fmt.Println("I'm Slave now")
-	}
 	// "reboot" into different mode
 }
-func (e Elev) Whoami() conf.ElevMode {
+func (e *Elev) Whoami() ElevMode {
 	return e.Mode
 }
-func (e Elev) GetMode() string {
-	if e.Mode == 0 {
-		return "M"
-	} else if e.Mode == 1 {
-		return "S"
-	} else {
-		return ""
-	}
-}
-func (e Elev) GetID_I() int {
-	// returns ID as int
-	return e.ID
-}
-func (e Elev) GetID_S() string {
-	// returns ID as string
-	return fmt.Sprint(e.ID)
-}
-func (e *Elev) SetID(id int) {
-	e.ID = id
-}
+
 func (e *Elev) Init() {
 	// setup default values for elevator
 	e.Dir = 0
 	e.PrevDir = 0
 	e.CurFloor = elevio.GetFloor()
 	e.DoorOpen = false
-	e.Mode = conf.Slave
-	e.ID = -1
+	e.Mode = Slave
 	e.Orders = Orders{
 		HallUp:   make([]bool, conf.Num_Of_Flors),
 		HallDown: make([]bool, conf.Num_Of_Flors),
@@ -186,18 +167,12 @@ func (e *Elev) NextOrder() {
 func (e *Elev) CompleteOrder(floor int) bool {
 	// stop, open doors, wait, close, go for next order
 	e.Stop()
-
-	if !e.DoorOpen {
-		e.OpenDoors()
-	}
-
+	e.OpenDoors()
 	e.Orders.CompleteOrder(floor)
+	time.Sleep(conf.Open_Door_Time * time.Second)
+	for !e.CloseDoors() {
 
-	if e.DoorOpen {
-		time.Sleep(conf.Open_Door_Time * time.Second)
-		e.CloseDoors()
 	}
-
 	e.NextOrder()
 
 	return true
