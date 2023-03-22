@@ -33,7 +33,7 @@ func (m Manage) GetMode(index int) int{
 
 
 
-func (m Manage) Slice(class elev.Orders) {
+func (m Manage) Slice(class elev.Orders) (elev.Orders, elev.Orders, elev.Orders){
 	// splits from orders to each elevator
 	var o elev.Orders
 	numButtons := 8
@@ -57,6 +57,9 @@ func (m Manage) Slice(class elev.Orders) {
 	m.Elevators[0].Orders.HallDown = sliceDown1
 	m.Elevators[1].Orders.HallDown = sliceDown2
 	m.Elevators[2].Orders.HallDown = sliceDown3
+
+
+	return m.Elevators[0].Orders, m.Elevators[1].Orders, m.Elevators[2].Orders
 }
 
 
