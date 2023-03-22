@@ -143,24 +143,25 @@ func main() {
 
 	role_chan <- elev.GetMode()
 
-	//!SECTION
+	//!SECTION -----------------------
 
-	//Messages channels
+	// ----- Messages channels ---------
 	sendMsg := make(chan string)
 	rcvdMsg := make(chan string)
-	//drivers channels
+
+	// ----- Drivers channels -----------
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
 	drv_obstr := make(chan bool)
 	drv_stop := make(chan bool)
 
-	// drivers goroutines
+	// ----- Drivers goroutines ---------
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 
-	// mesages
+	// ----- Messaging goroutines ---------
 	go bcast.Transmitter(Port_msgs, sendMsg)
 	go bcast.Receiver(Port_msgs, rcvdMsg)
 
@@ -203,20 +204,27 @@ func main() {
 				}
 			}
 
-		//messaging
+		// ----------- peer system, M/S control -------------
 		case p := <-peerUpdateCh:
 
-			fmt.Printf("Peer update:\n")
+			// ---- network info ----
+			// fmt.Printf("Peer update:\n")
 			fmt.Printf("  Elevs alive:    %q\n", p.Peers)
 			// fmt.Printf("  New:      %q\n", p.New)
-			fmt.Printf("  Disconnected Elev:     %q\n", p.Lost)
+			// fmt.Printf("  Disconnected Elev:     %q\n", p.Lost)
+			// ----------------------
 
-			if !IsMasterAlive(p.Peers) {
-				maxID := MaxIdAlive(p.Peers)
-				// fmt.Println("Max ID alive:", maxIDMode, maxID)
-				if maxID == elev.GetID_I() {
+			// if there is 0 or more than one masters it means that we have to choose the new one
+			// new master is choosen based on the highest ID in the nwtwork
+			// if there is more masters rest will be degraded
+			if HowManyMasters(p.Peers) != 1 {
+				if maxID := MaxIdAlive(p.Peers); maxID == elev.GetID_I() {
 					elev.ChangeMode(conf.Master)
+				} else {
+					elev.ChangeMode(conf.Slave)
+
 				}
+				role_chan <- elev.GetMode()
 			}
 
 		}
