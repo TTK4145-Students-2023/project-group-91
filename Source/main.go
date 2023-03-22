@@ -1,3 +1,4 @@
+// TODO - Fix door which stops the program
 package main
 
 import (

@@ -186,7 +186,6 @@ func (e *Elev) CompleteOrder(floor int) bool {
 	e.Stop()
 	if !e.DoorOpen {
 		e.OpenDoors()
-
 	}
 	e.Orders.CompleteOrder(floor)
 	time.Sleep(conf.Open_Door_Time * time.Second)
