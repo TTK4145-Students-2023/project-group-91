@@ -25,6 +25,14 @@ type Elev struct {
 	ID       int
 }
 
+func (e Elev) ImTheMaster() bool {
+	if e.Mode == conf.Master {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (e *Elev) ChangeMode(mode conf.ElevMode) {
 	e.Mode = mode
 

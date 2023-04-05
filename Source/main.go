@@ -28,12 +28,28 @@ type Msg struct {
 	SenderRole string
 	Message    string
 }
+type MsgOrder struct {
+	SenderID   int
+	SenderRole string
+	BType      elevio.ButtonType
+	BFloor     int
+}
 
 func PrepareMsg(m string, e elev.Elev) Msg {
 	msg := Msg{
 		SenderID:   e.GetID_I(),
 		SenderRole: e.GetMode(),
 		Message:    m}
+
+	return msg
+}
+
+func PrepareMsgOrder(floor int, button elevio.ButtonType, e elev.Elev) MsgOrder {
+	msg := MsgOrder{
+		SenderID:   e.GetID_I(),
+		SenderRole: e.GetMode(),
+		BType:      button,
+		BFloor:     floor}
 
 	return msg
 }
@@ -124,6 +140,9 @@ func main() {
 	sendMsg := make(chan Msg)
 	rcvdMsg := make(chan Msg)
 
+	sendOrdersChan := make(chan MsgOrder)
+	rcvdOrdersChan := make(chan MsgOrder)
+
 	// ----- Drivers channels -----------
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
@@ -137,26 +156,33 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	// ----- Messaging goroutines ---------
-	go bcast.Transmitter(Port_msgs, sendMsg)
-	go bcast.Receiver(Port_msgs, rcvdMsg)
+	go bcast.Transmitter(Port_msgs, sendMsg, sendOrdersChan)
+	go bcast.Receiver(Port_msgs, rcvdMsg, rcvdOrdersChan)
 
 	for {
 		select {
 
 		case button := <-drv_buttons:
 
-			elev.Orders.SetOrder(button.Floor, button.Button)
+			// TODO order sending
 
-			if button.Floor == elevio.GetFloor() {
-				if !elev.DoorOpen {
-
-					go elev.CompleteOrder(elev.GetFloor())
-				}
-
-			} else if elev.Dir == 0 {
-
+			if !elev.ImTheMaster() && button.Button != elevio.BT_Cab {
+				sendOrdersChan <- PrepareMsgOrder(button.Floor, button.Button, elev)
+			} else {
+				elev.Orders.SetOrder(button.Floor, button.Button)
 				go elev.NextOrder()
 			}
+
+			// if button.Floor == elevio.GetFloor() {
+			// 	if !elev.DoorOpen {
+
+			// 		go elev.CompleteOrder(elev.GetFloor())
+			// 	}
+
+			// } else if elev.Dir == 0 {
+
+			// 	go elev.NextOrder()
+			// }
 
 		case floor := <-drv_floors:
 			elev.UpdateFloor()
@@ -183,6 +209,16 @@ func main() {
 				}
 			}
 
+		case o := <-rcvdOrdersChan:
+			// TODO manage the recived orders
+			if elev.ImTheMaster() {
+
+			} else {
+
+			}
+			elev.Orders.SetOrder(o.BFloor, o.BType)
+			fmt.Println(o)
+			go elev.NextOrder()
 		// ------- Messages --------
 		case m := <-rcvdMsg:
 			if m.SenderID != elev.GetID_I() {

@@ -4,40 +4,28 @@ import (
 	"Source/elev"
 )
 
-
-type Manage struct{
-	Elevators []elev.Elev
+type Manage struct {
+	Elevators      []elev.Elev
 	NumOfElevators int
-	
 }
 
 func (m *Manage) SetNumOfElevators(n int) {
 	m.NumOfElevators = n
 }
 
-func (m *Manage) InitializeElevators(){
-	for i := 0; i < m.NumOfElevators; i++{
-		var elv elev.Elev
-		m.Elevators[i] = elv
-		elv.Init()
-	}
-}
-
-func (m Manage) HowManyElevators() int{
+func (m Manage) HowManyElevators() int {
 	return m.NumOfElevators
 }
 
-func (m Manage) GetMode(index int) int{
+func (m Manage) GetMode(index int) int {
 	return int(m.Elevators[index].Mode)
 }
 
-
-
-func (m Manage) Slice(class elev.Orders) (elev.Orders, elev.Orders, elev.Orders){
+func (m Manage) Slice(class elev.Orders) (elev.Orders, elev.Orders, elev.Orders) {
 	// splits from orders to each elevator
 	var o elev.Orders
 	numButtons := 8
-	size := numButtons / m.NumOfElevators 
+	size := numButtons / m.NumOfElevators
 
 	up := o.HallUp
 	down := o.HallDown
@@ -58,28 +46,25 @@ func (m Manage) Slice(class elev.Orders) (elev.Orders, elev.Orders, elev.Orders)
 	m.Elevators[1].Orders.HallDown = sliceDown2
 	m.Elevators[2].Orders.HallDown = sliceDown3
 
-
 	return m.Elevators[0].Orders, m.Elevators[1].Orders, m.Elevators[2].Orders
 }
 
-
-func (m Manage) OnEqualNumOfOrders() bool{
+func (m Manage) OnEqualNumOfOrders() bool {
 	numOrd := m.Elevators[0].Orders.NumOfOrders
 	isIt := true
-	for i := range m.Elevators{
-		if m.Elevators[i].Orders.NumOfOrders != numOrd{
+	for i := range m.Elevators {
+		if m.Elevators[i].Orders.NumOfOrders != numOrd {
 			isIt = false
 			break
 		}
 	}
-	return isIt 
+	return isIt
 }
 
-
-func (m Manage) OnZeroNumOfOrders() bool{
+func (m Manage) OnZeroNumOfOrders() bool {
 	temp := true
 	for i := 0; i < m.NumOfElevators; i++ {
-		if m.Elevators[i].Orders.NumOfOrders != 0{
+		if m.Elevators[i].Orders.NumOfOrders != 0 {
 			temp = false
 			break
 		}
@@ -92,15 +77,12 @@ func (m *Manage) WhoGetsOrder(class elev.Orders) {
 
 }
 
-
-
-func (m Manage) Choose(){
+func (m Manage) Choose() {
 	// all on same floor and same amount of orders
 }
 
-
 // e1  e2  e3
-// 4 _ 4 _ 4 
-// 3 _ 3 _ 3 
-// 2 _ 2 _ 2 
-// 1 _ 1 _ 1 
+// 4 _ 4 _ 4
+// 3 _ 3 _ 3
+// 2 _ 2 _ 2
+// 1 _ 1 _ 1
