@@ -1,11 +1,11 @@
 package dist
 
 import (
-	"Source/elev"
+	"Source/elevator"
 )
 
 type Manage struct {
-	Elevators      []elev.Elev
+	Elevators      []elevator.Elev
 	NumOfElevators int
 }
 
@@ -21,9 +21,9 @@ func (m Manage) GetMode(index int) int {
 	return int(m.Elevators[index].Mode)
 }
 
-func (m Manage) Slice(class elev.Orders) (elev.Orders, elev.Orders, elev.Orders) {
+func (m Manage) Slice(class elevator.Orders) (elevator.Orders, elevator.Orders, elevator.Orders) {
 	// splits from orders to each elevator
-	var o elev.Orders
+	var o elevator.Orders
 	numButtons := 8
 	size := numButtons / m.NumOfElevators
 
@@ -72,7 +72,7 @@ func (m Manage) OnZeroNumOfOrders() bool {
 	return temp
 }
 
-func (m *Manage) WhoGetsOrder(class elev.Orders) {
+func (m *Manage) WhoGetsOrder(class elevator.Orders) {
 	// decides by num of orders
 
 }

@@ -1,16 +1,19 @@
-package elev
+package elevator
 
-import "Source/elevio"
+import (
+	"Source/conf"
+	"Source/elevio"
+	"fmt"
+)
 
 type Orders struct {
-	HallUp   []bool
-	HallDown []bool
-	Cab      []bool
+	HallUp      []bool
+	HallDown    []bool
+	Cab         []bool
 	NumOfOrders int
-} 
+}
 
 func (o *Orders) SetOrder(floor int, button elevio.ButtonType) {
-
 	if button == 0 {
 		o.HallUp[floor] = true
 		elevio.SetButtonLamp(button, floor, true)
@@ -24,6 +27,22 @@ func (o *Orders) SetOrder(floor int, button elevio.ButtonType) {
 	} else if button == 1 {
 		o.HallDown[floor] = true
 		elevio.SetButtonLamp(button, floor, true)
+		o.NumOfOrders++
+
+	}
+}
+
+func (o *Orders) SetOrderTMP(floor int, button elevio.ButtonType) {
+	if button == 0 {
+		o.HallUp[floor] = true
+		o.NumOfOrders++
+
+	} else if button == 2 {
+		o.Cab[floor] = true
+		o.NumOfOrders++
+
+	} else if button == 1 {
+		o.HallDown[floor] = true
 		o.NumOfOrders++
 
 	}
@@ -68,6 +87,7 @@ func (o *Orders) ClearAll() {
 
 }
 func (o *Orders) CompleteOrder(floor int) {
+	// TODO not all at once
 
 	// if dir < 0 {
 	// 	o.HallDown[floor] = false
@@ -135,10 +155,52 @@ func (o Orders) FirstDown() int {
 	return -1
 }
 
-func (o Orders) howManyOrders() int {
+func (o Orders) HowManyOrders() int {
 	return o.NumOfOrders
 }
 
+func (o *Orders) UpdateLights() {
+	for i, v := range o.HallUp {
+		elevio.SetButtonLamp(elevio.BT_HallUp, i, v)
+	}
+	for i, v := range o.HallDown {
+		elevio.SetButtonLamp(elevio.BT_HallDown, i, v)
+	}
+}
+func (o Orders) Print() {
+	fmt.Print("\n\t\t======Orders======\n")
 
- 
-//!SECTION
+	fmt.Print("Floor:\t\t")
+	for i := 0; i < conf.Num_Of_Flors; i++ {
+		fmt.Printf("[%v] ", i)
+	}
+	fmt.Print("\nHall up:\t")
+	for _, v := range o.HallUp {
+		if v {
+			fmt.Print("[*] ")
+		} else {
+			fmt.Print("[ ] ")
+
+		}
+	}
+	fmt.Print("\nHall Down:\t")
+	for _, v := range o.HallDown {
+		if v {
+			fmt.Print("[*] ")
+		} else {
+			fmt.Print("[ ] ")
+
+		}
+	}
+	fmt.Print("\nCab:\t\t")
+	for _, v := range o.Cab {
+		if v {
+			fmt.Print("[*] ")
+		} else {
+			fmt.Print("[ ] ")
+
+		}
+	}
+	fmt.Print("\n\t\t==================\n")
+	fmt.Println()
+}
