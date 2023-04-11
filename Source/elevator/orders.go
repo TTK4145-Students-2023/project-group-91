@@ -86,26 +86,38 @@ func (o *Orders) ClearAll() {
 	o.NumOfOrders = 0
 
 }
-func (o *Orders) CompleteOrder(floor int) {
+func (o *Orders) CompleteOrder(floor int, dir int) {
 	// TODO not all at once
+	fmt.Println("dir:", dir)
+	if dir < 0 {
+		// fmt.Println(" down compleated")
+		o.HallDown[floor] = false
+		elevio.SetButtonLamp(1, floor, false)
 
-	// if dir < 0 {
-	// 	o.HallDown[floor] = false
-	// 	elevio.SetButtonLamp(1, floor, false)
+	} else if dir > 0 {
+		o.HallUp[floor] = false
+		elevio.SetButtonLamp(0, floor, false)
+		// fmt.Println(" up compleated")
 
-	// } else if dir > 0 {
-	// 	o.HallUp[floor] = false
-	// 	elevio.SetButtonLamp(0, floor, false)
+	}
+	if floor == conf.Num_Of_Flors-1 {
+		o.HallDown[floor] = false
+		elevio.SetButtonLamp(1, floor, false)
+	}
+	if floor == 0 {
+		o.HallUp[floor] = false
+		elevio.SetButtonLamp(0, floor, false)
+	}
 
-	// }
-
+	// fmt.Println(" and cabin compleated")
 	o.Cab[floor] = false
-	o.HallUp[floor] = false
-	o.HallDown[floor] = false
+	// o.HallUp[floor] = false
+	// o.HallDown[floor] = false
 	o.NumOfOrders--
-	elevio.SetButtonLamp(0, floor, false)
-	elevio.SetButtonLamp(1, floor, false)
+	// elevio.SetButtonLamp(0, floor, false)
+	// elevio.SetButtonLamp(1, floor, false)
 	elevio.SetButtonLamp(2, floor, false)
+	o.Print()
 
 }
 

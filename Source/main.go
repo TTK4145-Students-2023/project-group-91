@@ -195,7 +195,9 @@ func main() {
 
 			if elev.NoOrders() && button.Floor == elev.CurFloor { // if the button pressed is our only order
 
-				go elev.CompleteOrder(button.Floor)
+				elev.Orders.CompleteOrder(button.Floor, 1)
+				elev.Orders.CompleteOrder(button.Floor, -1)
+				fmt.Println("Hete")
 
 			} else if button.Button == elevio.BT_Cab { // if the order is cabin order add it to OUR orders
 
@@ -210,12 +212,13 @@ func main() {
 				sendOrderChan <- PrepareMsgOrder(button.Floor, button.Button, elev, -1)
 
 			} /*else {
-				elev.Orders.SetOrder(button.Floor, button.Button)
+			elev.Orders.SetOrder(button.Floor, button.Button)
 
 			} */
-		//!SECTION ----------
+			sendMsg <- PrepareMsg("U", elev) // sending updating msg about our state
+			//!SECTION ----------
 
-		//SECTION ---- When arrive on the floor ----
+			//SECTION ---- When arrive on the floor ----
 		case floor := <-drv_floors:
 
 			//NOTE just printing some debugging stuff
@@ -255,6 +258,7 @@ func main() {
 			// 	go elev.NextOrder()
 
 			// }
+			sendMsg <- PrepareMsg("U", elev) // sending updating msg about our state
 		// !SECTION
 
 		// SECTION ---- Recived orders obj msg ---
