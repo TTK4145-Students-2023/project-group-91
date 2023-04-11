@@ -124,6 +124,8 @@ func (e *Elev) Init() {
 		e.GoDown()
 	}
 
+	e.CloseDoors()
+
 	e.Elevs = append(e.Elevs, SemiElev{
 		ID:        e.ID,
 		Dir:       e.Dir,
@@ -200,6 +202,7 @@ func (e *Elev) NextOrder() {
 		for i := e.CurFloor; i < conf.Num_Of_Flors; i++ {
 
 			if e.Orders.HallUp[i] || e.Orders.Cab[i] {
+				// fmt.Print("__1_GOUP__")
 				e.GoUp()
 				return
 			}
@@ -211,6 +214,7 @@ func (e *Elev) NextOrder() {
 		for i := e.CurFloor; i > 0; i-- {
 
 			if e.Orders.HallDown[i] || e.Orders.Cab[i] {
+				// fmt.Print("__1_GODOWN__")
 				e.GoDown()
 				return
 			}
@@ -223,15 +227,21 @@ func (e *Elev) NextOrder() {
 
 		if e.Orders.Cab[i] || e.Orders.HallUp[i] || e.Orders.HallDown[i] {
 			if i < e.CurFloor {
+				// fmt.Print("__2_GODOWN__")
 				e.GoDown()
 				return
 			}
 			if i > e.CurFloor {
+				// fmt.Print("__2_GOUP__")
 				e.GoUp()
 				return
 			}
 			// case when someone press the button of the floor where they currently are
-			e.ShouldIstop(e.CurFloor)
+
+			e.Orders.CompleteOrder(e.CurFloor, 1)
+			e.Orders.CompleteOrder(e.CurFloor, -1)
+			// fmt.Print("__4__")
+
 			return
 		}
 
@@ -248,10 +258,10 @@ func (e *Elev) CompleteOrder(floor int) bool {
 		e.OpenDoors()
 	}
 
-	e.Orders.CompleteOrder(floor)
+	e.Orders.CompleteOrder(floor, e.PrevDir)
+	time.Sleep(conf.Open_Door_Time * time.Second)
 
 	if e.DoorOpen {
-		time.Sleep(conf.Open_Door_Time * time.Second)
 		e.CloseDoors()
 	}
 
@@ -269,7 +279,7 @@ func (e *Elev) ShouldIstop(floor int) bool {
 
 		if tf {
 
-			if d != 0 && e.Dir != d && e.Dir != 0 {
+			if d != 0 && e.Dir != d && e.Dir != 0 && e.Orders.NumOfOrders > 1 {
 				return false
 			}
 			//  cab order || not moving || same dir	  || there is no orders in
@@ -321,6 +331,7 @@ func (e *Elev) AddElev(a SemiElev) {
 	for i, el := range e.Elevs {
 		if el.ID < 0 {
 			e.Elevs[i] = a
+			e.Elevs[i].Orders = a.Orders
 			e.Elevs[i].CountOrders()
 			return
 		}
@@ -332,6 +343,7 @@ func (e *Elev) UpdateElev(id int, a SemiElev) {
 	for i := 0; i < len(e.Elevs); i++ {
 		if e.Elevs[i].ID == id {
 			e.Elevs[i] = a
+			e.Elevs[i].Orders = a.Orders
 			e.Elevs[i].CountOrders()
 		}
 	}
