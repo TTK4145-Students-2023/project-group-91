@@ -48,6 +48,7 @@ type MsgOrders struct {
 }
 
 func PrepareMsg(m string, e elevator.Elev) Msg {
+	// preparing message as a special struct
 	msg := Msg{
 		SenderID:   e.GetID_I(),
 		SenderRole: e.GetMode(),
@@ -80,7 +81,7 @@ func PrepareMsgOrders(e elevator.Elev, o elevator.Orders, recivID int) MsgOrders
 }
 
 func main() {
-
+	// runtime.GOMAXPROCS(10)
 	// Initialization
 
 	const Port_msgs = 20000
@@ -189,20 +190,14 @@ func main() {
 	for {
 		select {
 
+		// SECTION ---- Button is pressed ----
 		case button := <-drv_buttons:
 
-			// TODO order sending
-			// if button.Floor == elevio.GetFloor() {
-			// 	if !elev.DoorOpen {
-
-			// 		go elev.CompleteOrder(elev.GetFloor())
-			// 	}
-			// } else {
-			if elev.NoOrders() && button.Floor == elev.CurFloor {
+			if elev.NoOrders() && button.Floor == elev.CurFloor { // if the button pressed is our only order
 
 				go elev.CompleteOrder(button.Floor)
 
-			} else if button.Button == elevio.BT_Cab {
+			} else if button.Button == elevio.BT_Cab { // if the order is cabin order add it to OUR orders
 
 				elev.Orders.SetOrder(button.Floor, button.Button)
 
@@ -210,7 +205,7 @@ func main() {
 					go elev.NextOrder()
 				}
 
-			} else /*if !elev.ImTheMaster()*/ {
+			} else /*if !elev.ImTheMaster()*/ { // else send order to master (if it is the master it will send it to itself)
 
 				sendOrderChan <- PrepareMsgOrder(button.Floor, button.Button, elev, -1)
 
@@ -218,50 +213,38 @@ func main() {
 				elev.Orders.SetOrder(button.Floor, button.Button)
 
 			} */
+		//!SECTION ----------
 
-		//SECTION - When arrive on the floor
+		//SECTION ---- When arrive on the floor ----
 		case floor := <-drv_floors:
 
+			//NOTE just printing some debugging stuff
 			fmt.Println("elevs:")
 			for _, e := range elev.Elevs {
 				fmt.Println(e.ID)
 			}
+
 			elev.UpdateFloor()
-			elev.ShouldIstop(floor)
+			if elev.ShouldIstop(floor) { // check if it should stop to serve the order, and serve it if yes
+				go elev.CompleteOrder(floor) //TODO fix compleating all orders on a floor
+			}
+
+			//NOTE just printing some debugging stuff
 			fmt.Println("current floor:", elev.GetFloor())
-			sendMsg <- PrepareMsg("U", elev) // sending updating msg
 			elev.Orders.Print()
 
-		//!SECTION
+			sendMsg <- PrepareMsg("U", elev) // sending updating msg about our state
+		//!SECTION ---------
 
-		case stop := <-drv_stop:
-			if stop {
-				elev.Stop()
-			}
-
-		case obstr := <-drv_obstr:
-			if obstr && elev.DoorOpen {
-
-				elev.Stop()
-
-			} else if elev.DoorOpen {
-
-				elev.CloseDoors()
-
-				if !elev.ShouldIstop(elev.CurFloor) {
-					elev.NextOrder()
-				}
-			}
-
-		// ------- Messages --------
-		// SECTION - Recived single order msg
+		// SECTION ------- Messaging -------
+		// SECTION ---- Recived single order msg ----
 		case o := <-rcvdOrderChan:
 
-			if elev.ImTheMaster() {
-				elev.Orders.SetOrderTMP(o.BFloor, o.BType)
-				elev.DistributeOrders()
+			if elev.ImTheMaster() { // master got an order from other elev
+				elev.Orders.SetOrderTMP(o.BFloor, o.BType) // add it to its orders (without activation)
+				elev.DistributeOrders()                    //TODO distribute orders among elevs
 
-				for _, e := range elev.Elevs {
+				for _, e := range elev.Elevs { // send distributed orders to all elevs
 					sendOrdersChan <- PrepareMsgOrders(elev, e.Orders, e.ID)
 				}
 
@@ -274,11 +257,13 @@ func main() {
 			// }
 		// !SECTION
 
-		// SECTION - Recived all orders msg
+		// SECTION ---- Recived orders obj msg ---
 		case ors := <-rcvdOrdersChan:
+
 			fmt.Println("ReciverID:", ors.ReciverID)
 			fmt.Println("ElevID:", elev.GetID_I())
-			if ors.ReciverID == elev.GetID_I() {
+
+			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
 				fmt.Println("HALOOO")
 				// fmt.Println("ors")
 				// ors.Orders.Print()
@@ -286,24 +271,29 @@ func main() {
 				elev.Orders.HallDown = ors.Orders.HallDown
 				elev.Orders.UpdateLights()
 
-				if elev.Orders.HallUp[elev.GetFloor()] && elev.Orders.NumOfOrders == 1 {
+				// checking if we got some orders to compleate
+				if !elev.IsMoving() {
 
-					go elev.CompleteOrder(elev.GetFloor())
+					if elev.Orders.HallUp[elev.GetFloor()] /*&& elev.Orders.NumOfOrders == 1*/ {
 
-				} else if elev.Orders.HallDown[elev.GetFloor()] && elev.Orders.NumOfOrders == 1 {
+						go elev.CompleteOrder(elev.GetFloor())
 
-					go elev.CompleteOrder(elev.GetFloor())
+					} else if elev.Orders.HallDown[elev.GetFloor()] /*&& elev.Orders.NumOfOrders == 1*/ {
 
-				} else if elev.GetDirection() == 0 {
+						go elev.CompleteOrder(elev.GetFloor())
 
-					go elev.NextOrder()
+					} else if elev.GetDirection() == 0 {
 
+						go elev.NextOrder()
+
+					}
 				}
+				//NOTE printing debbuging list of orders
 				elev.Orders.Print()
 			}
 		// !SECTION
 
-		// SECTION - Recived msg
+		// SECTION ---- Recived msg ----
 		case m := <-rcvdMsg:
 
 			// adding elevator from network to local database of elevators
@@ -335,19 +325,20 @@ func main() {
 
 			}
 
-			if m.SenderID != elev.GetID_I() {
-				if m.SenderRole == "M" {
-					// ---- Messages from Master
-					// fmt.Println("m:	", m)
+			// if m.SenderID != elev.GetID_I() {
+			// 	if m.SenderRole == "M" {
+			// 		// ---- Messages from Master
+			// 		// fmt.Println("m:	", m)
 
-				} else {
-					// ---- Messages from Others
-					fmt.Println("SenderID:	", m.SenderID)
-					fmt.Println("SenderRole:	", m.SenderRole)
-					fmt.Println("Msg:		", m.Message)
-				}
+			// 	} else {
+			// 		// ---- Messages from Others
+			// 		fmt.Println("SenderID:	", m.SenderID)
+			// 		fmt.Println("SenderRole:	", m.SenderRole)
+			// 		fmt.Println("Msg:		", m.Message)
+			// 	}
 
-			}
+			// }
+		// !SECTION
 		// !SECTION
 		// ----------- peer system, M/S control -------------
 		case p := <-peerUpdateCh:
@@ -372,6 +363,25 @@ func main() {
 
 				}
 				role_chan <- elev.GetMode()
+			}
+
+		case stop := <-drv_stop:
+			if stop {
+				elev.Stop()
+			}
+
+		case obstr := <-drv_obstr:
+			if obstr && elev.DoorOpen {
+
+				elev.Stop()
+
+			} else if elev.DoorOpen {
+
+				elev.CloseDoors()
+
+				if !elev.ShouldIstop(elev.CurFloor) {
+					elev.NextOrder()
+				}
 			}
 
 		}

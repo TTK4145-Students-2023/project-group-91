@@ -57,6 +57,14 @@ type Elev struct {
 	ID       int
 }
 
+func (e Elev) IsMoving() bool {
+	if e.Dir == 0 {
+		return false
+	} else {
+		return true
+	}
+}
+
 func (e Elev) ImTheMaster() bool {
 	if e.Mode == conf.Master {
 		return true
@@ -261,11 +269,15 @@ func (e *Elev) ShouldIstop(floor int) bool {
 
 		if tf {
 
+			if d != 0 && e.Dir != d && e.Dir != 0 {
+				return false
+			}
 			//  cab order || not moving || same dir	  || there is no orders in
 			//                          || as order   || curr dir
 			if d == 0 || e.Dir == 0 || d == e.Dir {
 				// return e.CompleteOrder(floor)
-				go e.CompleteOrder(floor)
+				// go e.CompleteOrder(floor)
+				return true
 			}
 
 			if e.Orders.FirstDown() > e.CurFloor {
@@ -275,18 +287,21 @@ func (e *Elev) ShouldIstop(floor int) bool {
 			//
 			if e.Dir < 0 && e.Orders.FirstUp() == -1 {
 				// return e.CompleteOrder(floor)
-				go e.CompleteOrder(floor)
+				// go e.CompleteOrder(floor)
+				return true
 
 			}
 			if e.Dir > 0 && e.Orders.FirstDown() == -1 {
 				// return e.CompleteOrder(floor)
-				go e.CompleteOrder(floor)
+				// go e.CompleteOrder(floor)
+				return true
 
 			}
 			if e.Orders.FirstUp() == e.CurFloor || e.Orders.FirstDown() == e.CurFloor {
 
 				// return e.CompleteOrder(floor)
-				go e.CompleteOrder(floor)
+				// go e.CompleteOrder(floor)
+				return true
 			}
 
 		}
