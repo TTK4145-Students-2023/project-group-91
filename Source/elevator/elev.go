@@ -279,6 +279,10 @@ func (e *Elev) ShouldIstop(floor int) bool {
 
 		if tf {
 
+			// if e.Orders.NumOfOrders == 1 {
+			// 	return true
+			// }
+
 			if d != 0 && e.Dir != d && e.Dir != 0 && e.Orders.NumOfOrders > 1 {
 				return false
 			}
@@ -289,7 +293,7 @@ func (e *Elev) ShouldIstop(floor int) bool {
 				// go e.CompleteOrder(floor)
 				return true
 			}
-
+			//FIXME
 			if e.Orders.FirstDown() > e.CurFloor {
 				return false
 			}
@@ -358,6 +362,28 @@ func (e *Elev) RemElev(id int) {
 	}
 }
 
+func (e *Elev) giveOrderTo(elevID int, floor int, dir Directions, order bool) {
+
+	if dir == Up {
+
+		for i := range e.Elevs {
+			if e.Elevs[i].ID == elevID {
+				e.Elevs[i].Orders.HallUp[floor] = order
+				e.Orders.HallUp[floor] = !order
+			}
+		}
+	} else if dir == Down {
+
+		for i := range e.Elevs {
+			if e.Elevs[i].ID == elevID {
+				e.Elevs[i].Orders.HallDown[floor] = order
+				e.Orders.HallDown[floor] = !order
+			}
+		}
+	}
+}
+
+// TODO - Distribute order sytem:
 func (e *Elev) DistributeOrders() {
 
 	n := len(e.Elevs)
@@ -388,13 +414,15 @@ func (e *Elev) DistributeOrders() {
 				// if maxOrdNum != 0 && el.OrdersNum < maxOrdNum {
 
 				if e.Elevs[el].Dist == minDist {
-					e.Elevs[el].Orders.HallDown[i] = o
-					e.Orders.HallDown[i] = !o
+					e.giveOrderTo(e.Elevs[el].ID, i, Down, o)
+					// e.Elevs[el].Orders.HallDown[i] = o
+					// e.Orders.HallDown[i] = !o
 					break
 				}
 				if e.Elevs[el].Dir == int(Down) {
-					e.Elevs[el].Orders.HallDown[i] = o
-					e.Orders.HallDown[i] = !o
+					e.giveOrderTo(e.Elevs[el].ID, i, Down, o)
+					// e.Elevs[el].Orders.HallDown[i] = o
+					// e.Orders.HallDown[i] = !o
 					break
 				}
 				// }
@@ -429,13 +457,15 @@ func (e *Elev) DistributeOrders() {
 				// if maxOrdNum != 0 && el.OrdersNum < maxOrdNum {
 
 				if e.Elevs[el].Dist == minDist {
-					e.Elevs[el].Orders.HallUp[i] = o
-					e.Orders.HallUp[i] = !o
+					e.giveOrderTo(e.Elevs[el].ID, i, Up, o)
+					// e.Elevs[el].Orders.HallUp[i] = o
+					// e.Orders.HallUp[i] = !o
 					break
 				}
 				if e.Elevs[el].Dir == int(Up) {
-					e.Elevs[el].Orders.HallUp[i] = o
-					e.Orders.HallUp[i] = !o
+					e.giveOrderTo(e.Elevs[el].ID, i, Up, o)
+					// e.Elevs[el].Orders.HallUp[i] = o
+					// e.Orders.HallUp[i] = !o
 					break
 				}
 				// }
@@ -451,3 +481,96 @@ func (e *Elev) DistributeOrders() {
 	// 	}
 	// }
 }
+
+// func (elev *Elev) DistributeOrdersGPT() {
+// 	// Create a map to keep track of which orders have already been assigned to an elevator
+// 	assignedOrders := make(map[int]bool)
+
+// 	// Iterate over all elevators and their orders
+// 	for i := 0; i < len(elev.Elevs); i++ {
+// 		for j := 0; j < len(elev.Elevs[i].Orders.HallUp); j++ {
+// 			// Check if the current order has already been assigned to an elevator
+// 			if !assignedOrders[j] && elev.Elevs[i].Orders.HallUp[j] {
+// 				// Calculate the distance between the elevator and the order's floor
+// 				dist := int(math.Abs(float64(elev.Elevs[i].CurFloor - j)))
+
+// 				// Update the elevator's order list and mode
+// 				elev.Elevs[i].OrdersNum++
+// 				elev.Elevs[i].Orders.HallUp[j] = true
+// 				elev.Elevs[i].Dist += dist
+// 				// elev.Elevs[i].Mode = "Idle"
+
+// 				// Mark the order as assigned
+// 				assignedOrders[j] = true
+// 			}
+// 		}
+// 		for j := 0; j < len(elev.Elevs[i].Orders.HallDown); j++ {
+// 			// Check if the current order has already been assigned to an elevator
+// 			if !assignedOrders[j] && elev.Elevs[i].Orders.HallDown[j] {
+// 				// Calculate the distance between the elevator and the order's floor
+// 				dist := int(math.Abs(float64(elev.Elevs[i].CurFloor - j)))
+
+// 				// Update the elevator's order list and mode
+// 				elev.Elevs[i].OrdersNum++
+// 				elev.Elevs[i].Orders.HallDown[j] = true
+// 				elev.Elevs[i].Dist += dist
+// 				elev.Elevs[i].Mode = "Idle"
+
+// 				// Mark the order as assigned
+// 				assignedOrders[j] = true
+// 			}
+// 		}
+// 	}
+
+// 	// Iterate over all unassigned orders and assign them to the nearest elevator
+// 	for i := 0; i < len(elev.Orders.HallUp); i++ {
+// 		if !assignedOrders[i] && elev.Orders.HallUp[i] {
+// 			// Find the elevator with the shortest distance to the order's floor
+// 			shortestDist := math.MaxInt32
+// 			var closestElev *SemiElev
+
+// 			for j := 0; j < len(elev.Elevs); j++ {
+// 				dist := int(math.Abs(float64(elev.Elevs[j].CurFloor - i)))
+// 				if dist < shortestDist {
+// 					shortestDist = dist
+// 					closestElev = &elev.Elevs[j]
+// 				}
+// 			}
+
+// 			// Update the elevator's order list and mode
+// 			closestElev.OrdersNum++
+// 			closestElev.Orders.HallUp[i] = true
+// 			closestElev.Dist += shortestDist
+// 			closestElev.Mode = "Idle"
+
+// 			// Mark the order as assigned
+// 			assignedOrders[i] = true
+// 		}
+// 	}
+
+// 	for i := 0; i < len(elev.Orders.HallDown); i++ {
+// 		if !assignedOrders[i] && elev.Orders.HallDown[i] {
+// 			// Find the elevator
+// 			// Find the elevator with the shortest distance to the order's floor
+// 			shortestDist := math.MaxInt32
+// 			var closestElev *SemiElev
+
+// 			for j := 0; j < len(elev.Elevs); j++ {
+// 				dist := int(math.Abs(float64(elev.Elevs[j].CurFloor - i)))
+// 				if dist < shortestDist {
+// 					shortestDist = dist
+// 					closestElev = &elev.Elevs[j]
+// 				}
+// 			}
+
+// 			// Update the elevator's order list and mode
+// 			closestElev.OrdersNum++
+// 			closestElev.Orders.HallDown[i] = true
+// 			closestElev.Dist += shortestDist
+// 			closestElev.Mode = "Idle"
+
+// 			// Mark the order as assigned
+// 			assignedOrders[i] = true
+// 		}
+// 	}
+// }

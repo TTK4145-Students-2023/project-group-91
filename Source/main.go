@@ -1,10 +1,19 @@
-// TODO - serve orders only in one direction (dont complete each order on one floor)
+/* TODO - 	distribute orders system, for now it gives order only by distance to the order (not good),
+go to */ /*DistributeOrders()*/ /* to see how does it work.
+
+ */
+/* TODO - 	connect the main with backup
+Master elevator have a array field called Elevs with all nessesary data of others (and himself also) elevators
+it stores their orders, roles, id, direction etc Elevs is an array of SemiElev struct type to have less data than
+normal Elev struct
+*/
 
 // buglist:
 // FIXME[epic=bugs] - 	sometimes when pressing buttons while the elevator is between two floors there is an error: "core.exception.AssertError@src/sim_server.d(536): Tried to set floor indicator to non-existent floor 255
 // 						std.concurrency.OwnerTerminated@std/concurrency.d(236): Owner terminated
 // 						std.concurrency.OwnerTerminated@std/concurrency.d(236): Owner terminated"
 
+// FIXME[epic=bugs] - sometimes the orders (espesially on the last floor) is served but when elev will move somewhere else the light is lighting up again on its own
 package main
 
 import (
@@ -246,7 +255,7 @@ func main() {
 			if elev.ImTheMaster() { // master got an order from other elev
 				elev.Orders.SetOrderTMP(o.BFloor, o.BType) // add it to its orders (without activation)
 				elev.DistributeOrders()                    //TODO distribute orders among elevs
-
+				// elev.DistributeOrdersGPT()
 				for _, e := range elev.Elevs { // send distributed orders to all elevs
 					sendOrdersChan <- PrepareMsgOrders(elev, e.Orders, e.ID)
 				}

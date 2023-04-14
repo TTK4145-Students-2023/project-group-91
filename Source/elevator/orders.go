@@ -87,7 +87,6 @@ func (o *Orders) ClearAll() {
 
 }
 func (o *Orders) CompleteOrder(floor int, dir int) {
-	// TODO not all at once
 	fmt.Println("dir:", dir)
 	if dir < 0 {
 		// fmt.Println(" down compleated")
