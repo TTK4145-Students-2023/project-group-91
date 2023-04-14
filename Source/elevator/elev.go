@@ -64,6 +64,14 @@ func (e Elev) IsMoving() bool {
 		return true
 	}
 }
+func (e Elev) GetMeFromSemiElevs() SemiElev {
+	for i := range e.Elevs {
+		if e.Elevs[i].ID == e.GetID_I() {
+			return e.Elevs[i]
+		}
+	}
+	return SemiElev{ID: -1}
+}
 
 func (e Elev) ImTheMaster() bool {
 	if e.Mode == conf.Master {
@@ -134,6 +142,7 @@ func (e *Elev) Init() {
 		OrdersNum: 0,
 	})
 }
+
 func (e *Elev) UpdateFloor() int {
 	e.CurFloor = elevio.GetFloor()
 	elevio.SetFloorIndicator(e.CurFloor)
@@ -196,7 +205,7 @@ func (e *Elev) CloseDoors() bool {
 	}
 
 }
-func (e *Elev) NextOrder() {
+func (e *Elev) MoveOn() {
 	// going for the next order
 	if e.PrevDir > 0 {
 		for i := e.CurFloor; i < conf.Num_Of_Flors; i++ {
@@ -238,15 +247,33 @@ func (e *Elev) NextOrder() {
 			}
 			// case when someone press the button of the floor where they currently are
 
-			e.Orders.CompleteOrder(e.CurFloor, 1)
-			e.Orders.CompleteOrder(e.CurFloor, -1)
+			e.Orders.CompleteOrder(e.CurFloor, 1, e.GetMeFromSemiElevs())
+			e.Orders.CompleteOrder(e.CurFloor, -1, e.GetMeFromSemiElevs())
 			// fmt.Print("__4__")
 
 			return
 		}
 
 	}
+	// e.GoUp()
 
+}
+
+func (e *Elev) SleeperDetection(sleeperDetected chan bool) {
+
+	timer := 0
+	for {
+		time.Sleep(time.Millisecond * 1000)
+		timer++
+		if e.IsMoving() || e.NoOrders() {
+			timer = 0
+		}
+		if timer >= conf.Detect_Sleeper_Time {
+			sleeperDetected <- true
+			timer = 0
+		}
+
+	}
 }
 
 func (e *Elev) CompleteOrder(floor int) bool {
@@ -258,14 +285,14 @@ func (e *Elev) CompleteOrder(floor int) bool {
 		e.OpenDoors()
 	}
 
-	e.Orders.CompleteOrder(floor, e.PrevDir)
+	e.Orders.CompleteOrder(floor, e.PrevDir, e.GetMeFromSemiElevs())
 	time.Sleep(conf.Open_Door_Time * time.Second)
 
 	if e.DoorOpen {
 		e.CloseDoors()
 	}
 
-	e.NextOrder()
+	e.MoveOn()
 
 	return true
 }
@@ -324,7 +351,7 @@ func (e *Elev) ShouldIstop(floor int) bool {
 	return false
 }
 
-func (e Elev) ShouldIstopGPT(floor int) bool {
+func (e Elev) ShouldIstop2(floor int) bool {
 	// If the elevator has an active order for the current floor, it should stop
 	if e.Orders.Cab[floor] || e.Orders.HallUp[floor] || e.Orders.HallDown[floor] {
 		return true
@@ -354,8 +381,8 @@ func (e Elev) ShouldIstopGPT(floor int) bool {
 		// we need to check if we should stop at the current floor or continue to the next one
 
 		// Check if there is an order on the current floor that is in the direction that the elevator is going
-		orderExists, orderType := e.Orders.CheckOrder(floor)
-		if orderExists && ((e.Dir == int(Up) && orderType == int(Up)) || (e.Dir == int(Down) && orderType == int(Down))) {
+		oExists, oType := e.Orders.CheckOrder(floor)
+		if oExists && ((e.Dir == int(Up) && oType == int(Up)) || (e.Dir == int(Down) && oType == int(Down))) {
 			return true
 		}
 
@@ -389,7 +416,29 @@ func (e Elev) ShouldIstopGPT(floor int) bool {
 }
 
 func (e Elev) NoOrders() bool {
-	if e.Orders.HowManyOrders() == 0 {
+	// if e.Orders.HowManyOrders() == 0 {
+	// 	return true
+	// } else {
+	// 	return false
+	// }
+
+	count := 0
+	for _, v := range e.Orders.Cab {
+		if v {
+			count++
+		}
+	}
+	for _, v := range e.Orders.HallDown {
+		if v {
+			count++
+		}
+	}
+	for _, v := range e.Orders.HallUp {
+		if v {
+			count++
+		}
+	}
+	if count == 0 {
 		return true
 	} else {
 		return false

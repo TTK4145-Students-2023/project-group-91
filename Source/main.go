@@ -186,6 +186,8 @@ func main() {
 	drv_obstr := make(chan bool)
 	drv_stop := make(chan bool)
 
+	// ------ Other channels ------------
+	sleeperDetected := make(chan bool)
 	// ----- Drivers goroutines ---------
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
@@ -196,6 +198,9 @@ func main() {
 	go bcast.Transmitter(Port_msgs, sendMsg, sendOrderChan, sendOrdersChan)
 	go bcast.Receiver(Port_msgs, rcvdMsg, rcvdOrderChan, rcvdOrdersChan)
 
+	// ----- Other goroutines ---------
+	go elev.SleeperDetection(sleeperDetected)
+
 	for {
 		select {
 
@@ -204,16 +209,15 @@ func main() {
 
 			if elev.NoOrders() && button.Floor == elev.CurFloor { // if the button pressed is our only order
 
-				elev.Orders.CompleteOrder(button.Floor, 1)
-				elev.Orders.CompleteOrder(button.Floor, -1)
-				fmt.Println("Hete")
+				elev.Orders.CompleteOrder(button.Floor, 1, elev.GetMeFromSemiElevs())
+				elev.Orders.CompleteOrder(button.Floor, -1, elev.GetMeFromSemiElevs())
 
 			} else if button.Button == elevio.BT_Cab { // if the order is cabin order add it to OUR orders
 
 				elev.Orders.SetOrder(button.Floor, button.Button)
 
 				if elev.Dir == 0 {
-					go elev.NextOrder()
+					go elev.MoveOn()
 				}
 
 			} else /*if !elev.ImTheMaster()*/ { // else send order to master (if it is the master it will send it to itself)
@@ -235,10 +239,9 @@ func main() {
 			for _, e := range elev.Elevs {
 				fmt.Println(e.ID)
 			}
-
 			elev.UpdateFloor()
 			if elev.ShouldIstop(floor) { // check if it should stop to serve the order, and serve it if yes
-				go elev.CompleteOrder(floor) //TODO fix compleating all orders on a floor
+				go elev.CompleteOrder(floor)
 			}
 
 			//NOTE just printing some debugging stuff
@@ -277,7 +280,7 @@ func main() {
 			fmt.Println("ElevID:", elev.GetID_I())
 
 			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
-				fmt.Println("HALOOO")
+				// fmt.Println("HALOOO")
 				// fmt.Println("ors")
 				// ors.Orders.Print()
 				elev.Orders.HallUp = ors.Orders.HallUp
@@ -297,7 +300,7 @@ func main() {
 
 					} else if elev.GetDirection() == 0 {
 
-						go elev.NextOrder()
+						go elev.MoveOn()
 
 					}
 				}
@@ -335,24 +338,30 @@ func main() {
 						CurFloor: m.Floor,
 						Orders:   m.Orders})
 				}
-
 			}
 
-			// if m.SenderID != elev.GetID_I() {
-			// 	if m.SenderRole == "M" {
-			// 		// ---- Messages from Master
-			// 		// fmt.Println("m:	", m)
+		// if m.SenderID != elev.GetID_I() {
+		// 	if m.SenderRole == "M" {
+		// 		// ---- Messages from Master
+		// 		// fmt.Println("m:	", m)
 
-			// 	} else {
-			// 		// ---- Messages from Others
-			// 		fmt.Println("SenderID:	", m.SenderID)
-			// 		fmt.Println("SenderRole:	", m.SenderRole)
-			// 		fmt.Println("Msg:		", m.Message)
-			// 	}
+		// 	} else {
+		// 		// ---- Messages from Others
+		// 		fmt.Println("SenderID:	", m.SenderID)
+		// 		fmt.Println("SenderRole:	", m.SenderRole)
+		// 		fmt.Println("Msg:		", m.Message)
+		// 	}
 
-			// }
+		// }
 		// !SECTION
 		// !SECTION
+
+		case s := <-sleeperDetected:
+			if s {
+				fmt.Println("HALo")
+				elev.MoveOn()
+
+			}
 		// ----------- peer system, M/S control -------------
 		case p := <-peerUpdateCh:
 
@@ -378,6 +387,23 @@ func main() {
 				role_chan <- elev.GetMode()
 			}
 
+			for _, id := range p.Lost {
+				for _, e := range elev.Elevs {
+					if len(id) > 1 {
+
+						if idtmp, _ := strconv.Atoi(id[0:]); e.ID == idtmp {
+							if elev.ImTheMaster() {
+								elev.RemElev(e.ID)
+								elev.Orders.AddOrders(e.Orders)
+								fmt.Println("HHHHHHHHHHHHHHHHHHH")
+								e.Orders.Print()
+								elev.DistributeOrders()
+							}
+						}
+					}
+				}
+			}
+
 		case stop := <-drv_stop:
 			if stop {
 				elev.Stop()
@@ -393,7 +419,7 @@ func main() {
 				elev.CloseDoors()
 
 				if !elev.ShouldIstop(elev.CurFloor) {
-					elev.NextOrder()
+					elev.MoveOn()
 				}
 			}
 
