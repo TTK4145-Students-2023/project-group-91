@@ -370,7 +370,7 @@ func main() {
 			// fmt.Printf("Peer update:\n")
 			fmt.Printf("  Elevs alive:    %q\n", p.Peers)
 			// fmt.Printf("  New:      %q\n", p.New)
-			// fmt.Printf("  Disconnected Elev:     %q\n", p.Lost)
+			fmt.Printf("  Disconnected Elev:     %q\n", p.Lost)
 
 			// ----------------------
 
@@ -387,22 +387,24 @@ func main() {
 				role_chan <- elev.GetMode()
 			}
 
-			for _, id := range p.Lost {
-				for _, e := range elev.Elevs {
-					if len(id) > 1 {
-
-						if idtmp, _ := strconv.Atoi(id[0:]); e.ID == idtmp {
-							if elev.ImTheMaster() {
-								elev.RemElev(e.ID)
-								elev.Orders.AddOrders(e.Orders)
-								fmt.Println("HHHHHHHHHHHHHHHHHHH")
-								e.Orders.Print()
-								elev.DistributeOrders()
-							}
-						}
-					}
-				}
-			}
+			// for _, id := range p.Lost {
+			// 	fmt.Println(id)
+			// 	for _, e := range elev.Elevs {
+			// 		if len(id) > 1 {
+			// 			idtmp, _ := strconv.Atoi(id[0:])
+			// 			fmt.Println(idtmp)
+			// 			if e.ID == idtmp {
+			// 				if elev.ImTheMaster() {
+			// 					elev.RemElev(e.ID)
+			// 					elev.Orders.AddOrders(e.Orders)
+			// 					fmt.Println("HHHHHHHHHHHHHHHHHHH")
+			// 					e.Orders.Print()
+			// 					elev.DistributeOrders()
+			// 				}
+			// 			}
+			// 		}
+			// 	}
+			// }
 
 		case stop := <-drv_stop:
 			if stop {
