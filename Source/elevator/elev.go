@@ -324,6 +324,70 @@ func (e *Elev) ShouldIstop(floor int) bool {
 	return false
 }
 
+func (e Elev) ShouldIstopGPT(floor int) bool {
+	// If the elevator has an active order for the current floor, it should stop
+	if e.Orders.Cab[floor] || e.Orders.HallUp[floor] || e.Orders.HallDown[floor] {
+		return true
+	}
+
+	// Check if there are any orders in the direction that the elevator is going
+	var ordersInDirection []int
+	for f := floor + 1; f < conf.Num_Of_Flors; f++ {
+		if e.Orders.HallUp[f] || e.Orders.Cab[f] {
+			ordersInDirection = append(ordersInDirection, f)
+		}
+	}
+	for f := floor - 1; f >= 0; f-- {
+		if e.Orders.HallDown[f] || e.Orders.Cab[f] {
+			ordersInDirection = append(ordersInDirection, f)
+		}
+	}
+
+	if len(ordersInDirection) == 0 {
+		// If there are no orders in the direction that the elevator is going, it should stop
+		return true
+	} else if len(ordersInDirection) == 1 {
+		// If there is only one order in the direction that the elevator is going, it should stop
+		return true
+	} else {
+		// If there are multiple orders in the direction that the elevator is going,
+		// we need to check if we should stop at the current floor or continue to the next one
+
+		// Check if there is an order on the current floor that is in the direction that the elevator is going
+		orderExists, orderType := e.Orders.CheckOrder(floor)
+		if orderExists && ((e.Dir == int(Up) && orderType == int(Up)) || (e.Dir == int(Down) && orderType == int(Down))) {
+			return true
+		}
+
+		// Find the nearest order in the direction that the elevator is going
+		var nearestOrder int
+		if e.Dir == int(Up) {
+			nearestOrder = ordersInDirection[0]
+			for _, f := range ordersInDirection {
+				if f < nearestOrder {
+					nearestOrder = f
+				}
+			}
+		} else if e.Dir == int(Down) {
+			nearestOrder = ordersInDirection[0]
+			for _, f := range ordersInDirection {
+				if f > nearestOrder {
+					nearestOrder = f
+				}
+			}
+		}
+
+		// Check if we should skip the current floor to go to the nearest order first
+		if e.Dir == int(Up) && nearestOrder < floor {
+			return false
+		} else if e.Dir == int(Down) && nearestOrder > floor {
+			return false
+		} else {
+			return true
+		}
+	}
+}
+
 func (e Elev) NoOrders() bool {
 	if e.Orders.HowManyOrders() == 0 {
 		return true
