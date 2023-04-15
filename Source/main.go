@@ -1,13 +1,9 @@
-/* TODO - 	distribute orders system, for now it gives order only by distance to the order (not good),
-go to */ /*DistributeOrders()*/ /* to see how does it work.
-
- */
 /* TODO - 	connect the main with backup
 Master elevator have a array field called Elevs with all nessesary data of others (and himself also) elevators
 it stores their orders, roles, id, direction etc Elevs is an array of SemiElev struct type to have less data than
 normal Elev struct
 */
-// TODO - wait for order on the same
+// TODO - wait for order on the same floor
 
 // buglist:
 // FIXME[epic=bugs] - 	sometimes when pressing buttons while the elevator is between two floors there is an error: "core.exception.AssertError@src/sim_server.d(536): Tried to set floor indicator to non-existent floor 255
