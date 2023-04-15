@@ -37,8 +37,6 @@ func main() {
 	// runtime.GOMAXPROCS(10)
 	// Initialization
 
-	const Port_msgs = 20000
-
 	var id string
 	var port string
 	flag.StringVar(&id, "id", "", "id of this peer")         // custom id for localhost
@@ -139,8 +137,8 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	// ----- Messaging goroutines ---------
-	go bcast.Transmitter(Port_msgs, sendMsg, sendOrderChan, sendOrdersChan)
-	go bcast.Receiver(Port_msgs, rcvdMsg, rcvdOrderChan, rcvdOrdersChan)
+	go bcast.Transmitter(conf.Port_msgs, sendMsg, sendOrderChan, sendOrdersChan)
+	go bcast.Receiver(conf.Port_msgs, rcvdMsg, rcvdOrderChan, rcvdOrdersChan)
 
 	// ----- Other goroutines ---------
 	go elev.SleeperDetection(sleeperDetected)
@@ -222,15 +220,11 @@ func main() {
 		// SECTION ---- Recived orders obj msg ---
 		case ors := <-rcvdOrdersChan:
 
-			fmt.Println("ReciverID:", ors.ReciverID)
-			fmt.Println("ElevID:", elev.GetID_I())
+			// fmt.Println("ReciverID:", ors.ReciverID)
+			// fmt.Println("ElevID:", elev.GetID_I())
 
 			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
-				// fmt.Println("HALOOO")
-				// fmt.Println("ors")
-				// ors.Orders.Print()
-				elev.Orders.HallUp = ors.Orders.HallUp
-				elev.Orders.HallDown = ors.Orders.HallDown
+				elev.Orders.AddOrders(ors.Orders, "U", "D")
 				elev.Orders.UpdateLights()
 
 				// checking if we got some orders to compleate
@@ -259,6 +253,7 @@ func main() {
 		case m := <-rcvdMsg:
 
 			// adding elevator from network to local database of elevators
+
 			if elev.ImTheMaster() {
 				alreadyInNet := false
 				for i := 0; i < len(elev.Elevs); i++ {
