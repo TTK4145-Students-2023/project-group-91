@@ -33,9 +33,6 @@ import (
 	"time"
 )
 
-const Open_Door_Time = 2
-const Num_Of_Flors = 4
-
 func main() {
 	// runtime.GOMAXPROCS(10)
 	// Initialization
@@ -70,7 +67,7 @@ func main() {
 	fmt.Println("ID:", id)
 	fmt.Println("PORT:", port)
 
-	elevio.Init("localhost:"+port, Num_Of_Flors)
+	elevio.Init("localhost:"+port, conf.Num_Of_Flors)
 
 	// ----- creating elev struct and initialization -----
 	elev := elevator.Elev{}
@@ -229,9 +226,6 @@ func main() {
 			fmt.Println("ElevID:", elev.GetID_I())
 
 			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
-				// fmt.Println("HALOOO")
-				// fmt.Println("ors")
-				// ors.Orders.Print()
 				elev.Orders.HallUp = ors.Orders.HallUp
 				elev.Orders.HallDown = ors.Orders.HallDown
 				elev.Orders.UpdateLights()
