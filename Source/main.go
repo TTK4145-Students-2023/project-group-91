@@ -223,8 +223,8 @@ func main() {
 		// SECTION ---- Recived orders obj msg ---
 		case ors := <-rcvdOrdersChan:
 
-			fmt.Println("ReciverID:", ors.ReciverID)
-			fmt.Println("ElevID:", elev.GetID_I())
+			// fmt.Println("ReciverID:", ors.ReciverID)
+			// fmt.Println("ElevID:", elev.GetID_I())
 
 			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
 				elev.Orders.AddOrders(ors.Orders, "U", "D")

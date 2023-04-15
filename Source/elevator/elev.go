@@ -253,11 +253,14 @@ func (e Elev) UpdateLightsSum() {
 func (e *Elev) MoveOn() {
 	// going for the next order
 
-	if e.NextDir == conf.Up {
+	if e.Orders.CountOrders("Cab", "Up", "Down") == 0 {
+		e.Stop()
+		return
+	}
 
+	if e.NextDir == conf.Up {
 		e.GoUp()
 		return
-
 	}
 
 	if e.PrevDir == conf.Up {
