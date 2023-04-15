@@ -47,7 +47,7 @@ func (o *Orders) SetOrderTMP(floor int, button elevio.ButtonType) {
 
 	}
 }
-func (o Orders) CheckOrder(floor int) (bool, int) {
+func (o Orders) CheckOrder(floor int) (bool, conf.Directions) {
 	// check of there is any order on current floor and return true/false and order type
 	if floor == -1 {
 		return false, 0
@@ -133,7 +133,7 @@ func (o *Orders) AddOrders(orders Orders, ordType ...string) {
 
 	}
 }
-func (o *Orders) CompleteOrder(floor int, dir int, Elevs []SemiElev) int {
+func (o *Orders) CompleteOrder(floor int, dir conf.Directions, Elevs []SemiElev) int {
 	// fmt.Println("dir:", dir)
 	nextDir := 0
 	if dir < 0 {

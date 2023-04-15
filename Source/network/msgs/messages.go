@@ -1,6 +1,7 @@
 package msgs
 
 import (
+	"Source/conf"
 	"Source/elevator"
 	"Source/elevio"
 )
@@ -8,7 +9,7 @@ import (
 type Msg struct {
 	SenderID   int
 	SenderRole string
-	Dir        int
+	Dir        conf.Directions
 	Floor      int
 	Orders     elevator.Orders
 	Message    string

@@ -7,16 +7,8 @@ import (
 	"time"
 )
 
-type Directions int
-
-const (
-	Up   Directions = 1
-	Cab  Directions = 0
-	Down Directions = -1
-)
-
 type SemiElev struct {
-	Dir       int
+	Dir       conf.Directions
 	CurFloor  int
 	Orders    Orders
 	OrdersNum int
@@ -47,8 +39,8 @@ func (e *SemiElev) CountOrders() {
 }
 
 type Elev struct {
-	Dir      int
-	PrevDir  int
+	Dir      conf.Directions
+	PrevDir  conf.Directions
 	NextDir  int
 	CurFloor int
 	DoorOpen bool
@@ -154,7 +146,7 @@ func (e *Elev) UpdateFloor() int {
 
 	return e.CurFloor
 }
-func (e Elev) GetDirection() int {
+func (e Elev) GetDirection() conf.Directions {
 	return e.Dir
 }
 func (e Elev) GetFloor() int {
@@ -300,9 +292,9 @@ func (e *Elev) MoveOn() {
 			}
 			// case when someone press the button of the floor where they currently are
 
-			e.CompleteOrder(e.CurFloor)
-			// e.Orders.CompleteOrder(e.CurFloor, 1, e.Elevs)
-			// e.Orders.CompleteOrder(e.CurFloor, -1, e.Elevs)
+			// e.CompleteOrder(e.CurFloor)
+			e.Orders.CompleteOrder(e.CurFloor, 1, e.Elevs)
+			e.Orders.CompleteOrder(e.CurFloor, -1, e.Elevs)
 			// fmt.Print("__4__")
 
 			return
@@ -432,20 +424,20 @@ func (e Elev) ShouldIstop2(floor int) bool {
 
 		// Check if there is an order on the current floor that is in the direction that the elevator is going
 		oExists, oType := e.Orders.CheckOrder(floor)
-		if oExists && ((e.Dir == int(Up) && oType == int(Up)) || (e.Dir == int(Down) && oType == int(Down))) {
+		if oExists && ((e.Dir == conf.Up && oType == conf.Up) || (e.Dir == conf.Down && oType == conf.Down)) {
 			return true
 		}
 
 		// Find the nearest order in the direction that the elevator is going
 		var nearestOrder int
-		if e.Dir == int(Up) {
+		if e.Dir == conf.Up {
 			nearestOrder = ordersInDirection[0]
 			for _, f := range ordersInDirection {
 				if f < nearestOrder {
 					nearestOrder = f
 				}
 			}
-		} else if e.Dir == int(Down) {
+		} else if e.Dir == conf.Down {
 			nearestOrder = ordersInDirection[0]
 			for _, f := range ordersInDirection {
 				if f > nearestOrder {
@@ -455,14 +447,90 @@ func (e Elev) ShouldIstop2(floor int) bool {
 		}
 
 		// Check if we should skip the current floor to go to the nearest order first
-		if e.Dir == int(Up) && nearestOrder < floor {
+		if e.Dir == conf.Up && nearestOrder < floor {
 			return false
-		} else if e.Dir == int(Down) && nearestOrder > floor {
+		} else if e.Dir == conf.Down && nearestOrder > floor {
 			return false
 		} else {
 			return true
 		}
 	}
+}
+func (e Elev) ShouldIstop3(floor int) bool {
+	// Check if there is any order on current floor and return true/false
+	if floor == -1 {
+		return false
+	}
+
+	// Check if there is a cab order on current floor
+	if e.Orders.Cab[floor] {
+		return true
+	}
+
+	// Check if there is a hall order on current floor in the same direction as the elevator
+	if (e.Dir == conf.Up && e.Orders.HallUp[floor]) || (e.Dir == conf.Down && e.Orders.HallDown[floor]) {
+		return true
+	}
+
+	// Check if there is a hall order on a floor that we will pass by on our current direction
+	if e.Dir == conf.Up {
+		for f := floor + 1; f < conf.Num_Of_Flors; f++ {
+			if e.Orders.HallUp[f] || e.Orders.Cab[f] {
+				return false
+			}
+			if e.Orders.HallDown[f] {
+				return true
+			}
+		}
+	} else if e.Dir == conf.Down {
+		for f := floor - 1; f >= 0; f-- {
+			if e.Orders.HallDown[f] || e.Orders.Cab[f] {
+				return false
+			}
+			if e.Orders.HallUp[f] {
+				return true
+			}
+		}
+	}
+
+	// No orders to stop for
+	return false
+}
+
+func (e Elev) hasOrdersAbove(floor int) bool {
+	for i := floor + 1; i < conf.Num_Of_Flors; i++ {
+		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
+			return true
+		}
+	}
+	return false
+}
+
+func (e Elev) hasOrdersBelow(floor int) bool {
+	for i := floor - 1; i >= 0; i-- {
+		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
+			return true
+		}
+	}
+	return false
+}
+
+func (e Elev) closestOrderAbove(floor int) int {
+	for i := floor + 1; i < conf.Num_Of_Flors; i++ {
+		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
+			return i
+		}
+	}
+	return conf.Num_Of_Flors
+}
+
+func (e Elev) closestOrderBelow(floor int) int {
+	for i := floor - 1; i >= 0; i-- {
+		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
+			return i
+		}
+	}
+	return -1
 }
 
 func (e Elev) NoOrders() bool {
@@ -525,9 +593,9 @@ func (e *Elev) RemElev(id int) {
 	}
 }
 
-func (e *Elev) giveOrderTo(elevID int, floor int, dir Directions, order bool) {
+func (e *Elev) giveOrderTo(elevID int, floor int, dir conf.Directions, order bool) {
 
-	if dir == Up {
+	if dir == conf.Up {
 
 		for i := range e.Elevs {
 			if e.Elevs[i].ID == elevID {
@@ -535,7 +603,7 @@ func (e *Elev) giveOrderTo(elevID int, floor int, dir Directions, order bool) {
 				e.Orders.HallUp[floor] = !order
 			}
 		}
-	} else if dir == Down {
+	} else if dir == conf.Down {
 
 		for i := range e.Elevs {
 			if e.Elevs[i].ID == elevID {
@@ -587,13 +655,13 @@ func (e *Elev) DistributeOrders() {
 				// if maxOrdNum != 0 && el.OrdersNum < maxOrdNum {
 
 				if e.Elevs[el].Dist == minDist {
-					e.giveOrderTo(e.Elevs[el].ID, i, Down, o)
+					e.giveOrderTo(e.Elevs[el].ID, i, conf.Down, o)
 					// e.Elevs[el].Orders.HallDown[i] = o
 					// e.Orders.HallDown[i] = !o
 					break
 				}
-				if e.Elevs[el].Dir == int(Down) {
-					e.giveOrderTo(e.Elevs[el].ID, i, Down, o)
+				if e.Elevs[el].Dir == conf.Down {
+					e.giveOrderTo(e.Elevs[el].ID, i, conf.Down, o)
 					// e.Elevs[el].Orders.HallDown[i] = o
 					// e.Orders.HallDown[i] = !o
 					break
@@ -630,13 +698,13 @@ func (e *Elev) DistributeOrders() {
 				// if maxOrdNum != 0 && el.OrdersNum < maxOrdNum {
 
 				if e.Elevs[el].Dist == minDist {
-					e.giveOrderTo(e.Elevs[el].ID, i, Up, o)
+					e.giveOrderTo(e.Elevs[el].ID, i, conf.Up, o)
 					// e.Elevs[el].Orders.HallUp[i] = o
 					// e.Orders.HallUp[i] = !o
 					break
 				}
-				if e.Elevs[el].Dir == int(Up) {
-					e.giveOrderTo(e.Elevs[el].ID, i, Up, o)
+				if e.Elevs[el].Dir == conf.Up {
+					e.giveOrderTo(e.Elevs[el].ID, i, conf.Up, o)
 					// e.Elevs[el].Orders.HallUp[i] = o
 					// e.Orders.HallUp[i] = !o
 					break

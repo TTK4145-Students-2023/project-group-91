@@ -192,7 +192,7 @@ func main() {
 				fmt.Println(e.ID)
 			}
 			elev.UpdateFloor()
-			if elev.ShouldIstop(floor) { // check if it should stop to serve the order, and serve it if yes
+			if elev.ShouldIstop3(floor) { // check if it should stop to serve the order, and serve it if yes
 				go elev.CompleteOrder(floor)
 			}
 
@@ -375,7 +375,7 @@ func main() {
 
 				elev.CloseDoors()
 
-				if !elev.ShouldIstop(elev.CurFloor) {
+				if !elev.ShouldIstop3(elev.CurFloor) {
 					elev.MoveOn()
 				}
 			}

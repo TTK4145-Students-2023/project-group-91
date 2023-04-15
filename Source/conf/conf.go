@@ -14,3 +14,11 @@ var (
 	Master ElevMode = 0
 	Slave  ElevMode = 1
 )
+
+type Directions int
+
+const (
+	Up   Directions = 1
+	Cab  Directions = 0
+	Down Directions = -1
+)
