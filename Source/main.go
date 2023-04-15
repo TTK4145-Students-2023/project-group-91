@@ -230,8 +230,7 @@ func main() {
 			fmt.Println("ElevID:", elev.GetID_I())
 
 			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
-				elev.Orders.HallUp = ors.Orders.HallUp
-				elev.Orders.HallDown = ors.Orders.HallDown
+				elev.Orders.AddOrders(ors.Orders, "U", "D")
 				elev.Orders.UpdateLights()
 
 				// checking if we got some orders to compleate
