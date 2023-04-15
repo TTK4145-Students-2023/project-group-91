@@ -496,10 +496,22 @@ func (e *Elev) giveOrderTo(elevID int, floor int, dir Directions, order bool) {
 	}
 }
 
+func (e Elev) InZero() int {
+
+	for _, el := range e.Elevs {
+		if el.CurFloor == 0 {
+			return el.ID
+		}
+	}
+	return -1
+}
+
 // TODO - Distribute order sytem:
 func (e *Elev) DistributeOrders() {
 
 	n := len(e.Elevs)
+
+	
 
 	for i, o := range e.Orders.HallDown {
 		if o {
