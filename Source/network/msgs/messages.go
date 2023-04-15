@@ -26,6 +26,11 @@ type MsgOrders struct {
 	Orders     elevator.Orders
 	ReciverID  int
 }
+type MsgBackup struct {
+	SenderID   int
+	SenderRole string
+	Elevs      []elevator.SemiElev
+}
 
 func PrepareMsg(m string, e elevator.Elev) Msg {
 	// preparing message as a special struct
@@ -57,5 +62,14 @@ func PrepareMsgOrders(e elevator.Elev, o elevator.Orders, recivID int) MsgOrders
 		Orders:     o,
 		ReciverID:  recivID}
 
+	return msg
+}
+
+func PrepareBackupMsg(e elevator.Elev) MsgBackup {
+	msg := MsgBackup{
+		SenderID:   e.ID,
+		SenderRole: e.GetMode(),
+		Elevs:      e.Elevs,
+	}
 	return msg
 }

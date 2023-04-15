@@ -120,7 +120,8 @@ func main() {
 	// ----- Messages channels ---------
 	sendMsg := make(chan msgs.Msg)
 	rcvdMsg := make(chan msgs.Msg)
-
+	sendBackup := make(chan msgs.MsgBackup)
+	rcvdBackup := make(chan msgs.MsgBackup)
 	sendOrderChan := make(chan msgs.MsgOrder)
 	rcvdOrderChan := make(chan msgs.MsgOrder)
 	sendOrdersChan := make(chan msgs.MsgOrders)
@@ -143,8 +144,8 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	// ----- Messaging goroutines ---------
-	go bcast.Transmitter(conf.Port_msgs, sendMsg, sendOrderChan, sendOrdersChan)
-	go bcast.Receiver(conf.Port_msgs, rcvdMsg, rcvdOrderChan, rcvdOrdersChan)
+	go bcast.Transmitter(conf.Port_msgs, sendMsg, sendOrderChan, sendOrdersChan, sendBackup)
+	go bcast.Receiver(conf.Port_msgs, rcvdMsg, rcvdOrderChan, rcvdOrdersChan, rcvdBackup)
 
 	// ----- Other goroutines ---------
 	go elev.SleeperDetection(sleeperDetected)
@@ -216,11 +217,6 @@ func main() {
 
 			}
 
-			// if o.ReciverID == elev.ID { // we got a message for us
-			// 	elev.Orders.SetOrder(o.BFloor, o.BType)
-			// 	go elev.NextOrder()
-
-			// }
 		// !SECTION
 
 		// SECTION ---- Recived orders obj msg ---
@@ -301,15 +297,21 @@ func main() {
 		// }
 		// !SECTION
 		// !SECTION
-
+		case b := <-rcvdBackup:
+			if !elev.ImTheMaster() {
+				elev.Elevs = b.Elevs
+			}
 		case s := <-sleeperDetected:
 			if s {
 				elev.MoveOn()
 			}
 		case u := <-timeTick:
 			if u {
-				sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 
+				sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
+				if elev.ImTheMaster() {
+					sendBackup <- msgs.PrepareBackupMsg(elev)
+				}
 			}
 
 		// ----------- peer system, M/S control -------------
