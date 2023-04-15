@@ -110,8 +110,8 @@ func (o *Orders) AddOrders(orders Orders, ordTypes ...string) {
 
 	if up {
 
-		for i := range o.HallUp {
-			if orders.HallUp[i] {
+		for i, v := range orders.HallUp {
+			if v {
 				o.HallUp[i] = true
 				o.NumOfOrders++
 			}
@@ -119,8 +119,8 @@ func (o *Orders) AddOrders(orders Orders, ordTypes ...string) {
 
 	}
 	if down {
-		for i := range o.HallDown {
-			if orders.HallDown[i] {
+		for i, v := range orders.HallDown {
+			if v {
 				o.HallDown[i] = true
 				o.NumOfOrders++
 			}
@@ -128,8 +128,8 @@ func (o *Orders) AddOrders(orders Orders, ordTypes ...string) {
 
 	}
 	if cab {
-		for i := range o.Cab {
-			if orders.Cab[i] {
+		for i, v := range orders.Cab {
+			if v {
 				o.Cab[i] = true
 				o.NumOfOrders++
 			}

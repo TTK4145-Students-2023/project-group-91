@@ -7,7 +7,7 @@ const Detect_Sleeper_Time = 5
 const Wait_For_Order_Time = 5
 const Port_msgs = 2000
 const Update_Time_Interval = 500 // [in miliseconds]
-const Max_Orders_Per_Elevator = Num_Of_Flors * 2
+const Max_Orders_Per_Elevator = Num_Of_Flors
 
 type ElevMode int
 

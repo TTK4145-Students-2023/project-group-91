@@ -528,7 +528,6 @@ func (e Elev) InZero() int {
 	return -1
 }
 
-// TODO - Distribute order sytem:
 func (e *Elev) DistributeOrders() {
 
 	n := len(e.Elevs)

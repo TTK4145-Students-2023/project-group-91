@@ -210,7 +210,7 @@ func main() {
 
 			if elev.ImTheMaster() { // master got an order from other elev
 				elev.Orders.SetOrderTMP(o.BFloor, o.BType) // add it to its orders (without activation)
-				elev.DistributeOrdersGPT3()                //distribute orders among elevs
+				elev.DistributeOrdersGPT2()                //distribute orders among elevs
 				for _, e := range elev.Elevs {             // send distributed orders to all elevs
 					sendOrdersChan <- msgs.PrepareMsgOrders(elev, e.Orders, e.ID)
 				}
@@ -361,7 +361,7 @@ func main() {
 					}
 				}
 
-				elev.DistributeOrdersGPT3()
+				elev.DistributeOrdersGPT2()
 				for _, e := range elev.Elevs { // send distributed orders to all elevs
 					sendOrdersChan <- msgs.PrepareMsgOrders(elev, e.Orders, e.ID)
 				}
