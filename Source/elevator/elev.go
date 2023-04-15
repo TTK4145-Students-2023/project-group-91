@@ -4,6 +4,7 @@ import (
 	"Source/conf"
 	"Source/elevio"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -257,8 +258,16 @@ func (e *Elev) MoveOn() {
 	// 	e.Stop()
 	// 	return
 	// }
+	// if e.CurFloor == conf.Num_Of_Flors-1 {
+	// 	e.GoDown()
+	// 	return
+	// }
+	// if e.CurFloor == 0 {
+	// 	e.GoUp()
+	// 	return
+	// }
 
-	if e.NextDir == conf.Up && e.Orders.CountOrders("Up") > 0 {
+	if e.NextDir == conf.Up && e.Orders.CountOrders("Up") > 0 && e.CurFloor != conf.Num_Of_Flors-1 {
 		e.GoUp()
 		return
 	}
@@ -275,7 +284,7 @@ func (e *Elev) MoveOn() {
 		}
 	}
 
-	if e.NextDir == conf.Down && e.Orders.CountOrders("Down") != 0 {
+	if e.NextDir == conf.Down && e.Orders.CountOrders("Down") > 0 && e.CurFloor != 0 {
 		e.GoDown()
 		return
 	}
@@ -710,3 +719,166 @@ func (e *Elev) DistributeOrders() {
 // 		}
 // 	}
 // }
+
+func (e *Elev) findClosestElevator(floor int) *SemiElev {
+	minDist := conf.Num_Of_Flors + 1
+	minOrders := conf.Num_Of_Flors + 1
+	var closestElev *SemiElev
+
+	for i := range e.Elevs {
+		if e.Elevs[i].OrdersNum < conf.Max_Orders_Per_Elevator {
+			dist := int(math.Abs(float64(e.Elevs[i].CurFloor - floor)))
+			if dist < minDist || (dist == minDist && e.Elevs[i].OrdersNum < minOrders) {
+				minDist = dist
+				minOrders = e.Elevs[i].OrdersNum
+				closestElev = &e.Elevs[i]
+			}
+		}
+	}
+
+	return closestElev
+}
+
+func (e *Elev) DistributeOrdersGPT() {
+	for floor := 0; floor < conf.Num_Of_Flors; floor++ {
+		if e.Orders.HallUp[floor] || e.Orders.HallDown[floor] {
+			// Find the closest elevator to the floor
+			closestElev := e.findClosestElevator(floor)
+
+			// Add the order to the closest elevator's orders
+			if e.Orders.HallUp[floor] {
+				closestElev.Orders.HallUp[floor] = true
+			} else {
+				closestElev.Orders.HallDown[floor] = true
+			}
+			closestElev.Orders.NumOfOrders++
+
+			// Remove the order from this elevator's orders
+			e.Orders.HallUp[floor] = false
+			e.Orders.HallDown[floor] = false
+			e.Orders.NumOfOrders--
+		}
+	}
+}
+
+func (e *Elev) DistributeOrdersGPT2() {
+	// Loop over all hall up and down buttons and distribute the orders
+	for i, btn := range e.Orders.HallUp {
+		if btn {
+			// Find the closest elevator moving in the upward direction
+			elev := e.findClosestElevator(i)
+			if elev != nil && (elev.Dir == conf.Up || elev.Dir == conf.None) {
+				elev.Orders.HallUp[i] = true
+				elev.Orders.NumOfOrders++
+				elev.OrdersNum++
+				e.Orders.HallUp[i] = false
+			} else {
+				// If there are no available elevators moving in the upward direction,
+				// add the order to the global queue
+				e.Orders.HallUp[i] = true
+				e.Orders.NumOfOrders++
+			}
+		}
+	}
+	for i, btn := range e.Orders.HallDown {
+		if btn {
+			// Find the closest elevator moving in the downward direction
+			elev := e.findClosestElevator(i)
+			if elev != nil && (elev.Dir == conf.Down || elev.Dir == conf.None) {
+				elev.Orders.HallDown[i] = true
+				elev.Orders.NumOfOrders++
+				elev.OrdersNum++
+				e.Orders.HallDown[i] = false
+			} else {
+				// If there are no available elevators moving in the downward direction,
+				// add the order to the global queue
+				e.Orders.HallDown[i] = true
+				e.Orders.NumOfOrders++
+			}
+		}
+	}
+
+	// Handle scenario when both hall up and hall down buttons are pressed on the same floor
+	for i := range e.Orders.HallUp {
+		if e.Orders.HallUp[i] && e.Orders.HallDown[i] {
+			// Find the closest elevator moving in the upward direction
+			elevUp := e.findClosestElevator(i)
+			// Find the closest elevator moving in the downward direction
+			elevDown := e.findClosestElevator(i)
+			if elevUp != nil && (elevUp.Dir == conf.Up || elevUp.Dir == conf.None) {
+				elevUp.Orders.HallUp[i] = true
+				elevUp.Orders.NumOfOrders++
+				elevUp.OrdersNum++
+				e.Orders.HallUp[i] = false
+			} else if elevDown != nil && (elevDown.Dir == conf.Down || elevDown.Dir == conf.None) {
+				elevDown.Orders.HallDown[i] = true
+				elevDown.Orders.NumOfOrders++
+				elevDown.OrdersNum++
+				e.Orders.HallDown[i] = false
+			} else {
+				// If there are no available elevators moving in the required directions,
+				// add the orders to the global queue
+				e.Orders.HallUp[i] = true
+				e.Orders.HallDown[i] = true
+				e.Orders.NumOfOrders += 2
+			}
+		}
+	}
+}
+
+func (e *Elev) DistributeOrdersGPT3() {
+	// loop through all non-cab orders
+	for i, v := range e.Orders.HallUp {
+		if v || e.Orders.HallDown[i] {
+			// initialize minimum distance to a very large value
+			minDist := math.MaxInt32
+			var chosenElev *SemiElev
+			var oppositeDirElev *SemiElev
+
+			// loop through all elevators
+			for j := range e.Elevs {
+				// only consider elevators that are not moving or have no orders
+				if e.Elevs[j].OrdersNum == 0 || e.Elevs[j].Dist == 0 {
+					// if an elevator has no orders, assign it to the current order
+					if e.Elevs[j].OrdersNum == 0 {
+						chosenElev = &e.Elevs[j]
+						break
+					} else if chosenElev == nil {
+						// if no elevator has been chosen yet, choose the first elevator with no orders or not moving
+						chosenElev = &e.Elevs[j]
+					}
+				} else {
+					// check if elevator is moving in the same direction as the order
+					if e.Elevs[j].Dir == conf.Up && e.Orders.HallUp[i] || e.Elevs[j].Dir == conf.Down && e.Orders.HallDown[i] {
+						// calculate distance between elevator and order
+						dist := int(math.Abs(float64(e.Elevs[j].CurFloor - i)))
+						// check if this elevator is closer to the order than the previously chosen one
+						if dist < minDist {
+							minDist = dist
+							chosenElev = &e.Elevs[j]
+						}
+					} else if oppositeDirElev == nil {
+						// if elevator is moving in the opposite direction, save it as a possible option for the opposite direction request
+						oppositeDirElev = &e.Elevs[j]
+					}
+				}
+			}
+
+			// if both UP and DOWN requests are present on the same floor, assign them to different elevators
+			if e.Orders.HallUp[i] && e.Orders.HallDown[i] {
+				chosenElev.Orders.HallUp[i] = true
+				oppositeDirElev.Orders.HallDown[i] = true
+				chosenElev.OrdersNum++
+				oppositeDirElev.OrdersNum++
+			} else {
+				// assign the order to the chosen elevator
+				if e.Orders.HallUp[i] {
+					chosenElev.Orders.HallUp[i] = true
+				} else {
+					chosenElev.Orders.HallDown[i] = true
+				}
+				chosenElev.OrdersNum++
+			}
+		}
+	}
+}
