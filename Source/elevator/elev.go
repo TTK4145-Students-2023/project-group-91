@@ -49,6 +49,7 @@ func (e *SemiElev) CountOrders() {
 type Elev struct {
 	Dir      int
 	PrevDir  int
+	NextDir  int
 	CurFloor int
 	DoorOpen bool
 	Orders   Orders
@@ -279,13 +280,14 @@ func (e *Elev) SleeperDetection(sleeperDetected chan bool) {
 func (e *Elev) CompleteOrder(floor int) bool {
 	// stop, open doors, wait, close, go for next order
 	// e.Orders.Print()
+
 	e.Stop()
 
 	if !e.DoorOpen {
 		e.OpenDoors()
 	}
 
-	e.Orders.CompleteOrder(floor, e.PrevDir, e.GetMeFromSemiElevs())
+	e.NextDir = e.Orders.CompleteOrder(floor, e.PrevDir, e.GetMeFromSemiElevs())
 	time.Sleep(conf.Open_Door_Time * time.Second)
 
 	if e.DoorOpen {
@@ -297,6 +299,7 @@ func (e *Elev) CompleteOrder(floor int) bool {
 	return true
 }
 
+// !!!  THIS IS OLD VERSION OF THE FUNCTION  !!!
 func (e *Elev) ShouldIstop(floor int) bool {
 	// return true if there is an order on current floor "for us" - in same direction or order was from cabin
 	e.UpdateFloor()
@@ -316,8 +319,6 @@ func (e *Elev) ShouldIstop(floor int) bool {
 			//  cab order || not moving || same dir	  || there is no orders in
 			//                          || as order   || curr dir
 			if d == 0 || e.Dir == 0 || d == e.Dir {
-				// return e.CompleteOrder(floor)
-				// go e.CompleteOrder(floor)
 				return true
 			}
 			//FIXME
@@ -327,21 +328,15 @@ func (e *Elev) ShouldIstop(floor int) bool {
 
 			//
 			if e.Dir < 0 && e.Orders.FirstUp() == -1 {
-				// return e.CompleteOrder(floor)
-				// go e.CompleteOrder(floor)
 				return true
 
 			}
 			if e.Dir > 0 && e.Orders.FirstDown() == -1 {
-				// return e.CompleteOrder(floor)
-				// go e.CompleteOrder(floor)
 				return true
 
 			}
 			if e.Orders.FirstUp() == e.CurFloor || e.Orders.FirstDown() == e.CurFloor {
 
-				// return e.CompleteOrder(floor)
-				// go e.CompleteOrder(floor)
 				return true
 			}
 
@@ -510,8 +505,6 @@ func (e Elev) InZero() int {
 func (e *Elev) DistributeOrders() {
 
 	n := len(e.Elevs)
-
-	
 
 	for i, o := range e.Orders.HallDown {
 		if o {
