@@ -206,6 +206,17 @@ func (e *Elev) CloseDoors() bool {
 	}
 
 }
+func (e Elev) UpdateLights() {
+	for _, el := range e.Elevs {
+
+		for i, v := range el.Orders.HallUp {
+			elevio.SetButtonLamp(elevio.BT_HallUp, i, v)
+		}
+		for i, v := range el.Orders.HallDown {
+			elevio.SetButtonLamp(elevio.BT_HallDown, i, v)
+		}
+	}
+}
 func (e *Elev) MoveOn() {
 	// going for the next order
 	if e.PrevDir > 0 {
