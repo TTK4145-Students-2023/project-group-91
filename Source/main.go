@@ -7,6 +7,7 @@ Master elevator have a array field called Elevs with all nessesary data of other
 it stores their orders, roles, id, direction etc Elevs is an array of SemiElev struct type to have less data than
 normal Elev struct
 */
+// TODO - wait for order on the same
 
 // buglist:
 // FIXME[epic=bugs] - 	sometimes when pressing buttons while the elevator is between two floors there is an error: "core.exception.AssertError@src/sim_server.d(536): Tried to set floor indicator to non-existent floor 255
@@ -209,6 +210,8 @@ func main() {
 
 			if elev.NoOrders() && button.Floor == elev.CurFloor { // if the button pressed is our only order
 
+				elev.Orders.SetOrder(button.Floor, button.Button)
+				elev.CompleteOrder(button.Floor)
 				elev.Orders.CompleteOrder(button.Floor, 1, elev.GetMeFromSemiElevs())
 				elev.Orders.CompleteOrder(button.Floor, -1, elev.GetMeFromSemiElevs())
 
@@ -245,7 +248,7 @@ func main() {
 			}
 
 			//NOTE just printing some debugging stuff
-			fmt.Println("current floor:", elev.GetFloor())
+			// fmt.Println("current floor:", elev.GetFloor())
 			elev.Orders.Print()
 
 			sendMsg <- PrepareMsg("U", elev) // sending updating msg about our state
@@ -257,7 +260,7 @@ func main() {
 
 			if elev.ImTheMaster() { // master got an order from other elev
 				elev.Orders.SetOrderTMP(o.BFloor, o.BType) // add it to its orders (without activation)
-				elev.DistributeOrders()                    //TODO distribute orders among elevs
+				elev.DistributeOrders()                    //distribute orders among elevs
 				// elev.DistributeOrdersGPT()
 				for _, e := range elev.Elevs { // send distributed orders to all elevs
 					sendOrdersChan <- PrepareMsgOrders(elev, e.Orders, e.ID)
@@ -358,9 +361,7 @@ func main() {
 
 		case s := <-sleeperDetected:
 			if s {
-				fmt.Println("HALo")
 				elev.MoveOn()
-
 			}
 		// ----------- peer system, M/S control -------------
 		case p := <-peerUpdateCh:
