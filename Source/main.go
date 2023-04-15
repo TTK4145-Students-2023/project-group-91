@@ -29,11 +29,16 @@ import (
 	"time"
 )
 
+func Timer(update chan bool) {
+	for {
+		time.Sleep(time.Millisecond * conf.Update_Time_Interval)
+		update <- true
+	}
+}
+
 func main() {
 	// runtime.GOMAXPROCS(10)
-	// Initialization
-
-	const Port_msgs = 20000
+	// ---------- Initialization -----------
 
 	var id string
 	var port string
@@ -81,6 +86,7 @@ func main() {
 
 	timer := 0
 	// waiting for any signal from Master ...
+	println("Waiting for master.")
 	for timer < conf.Wait_For_Master_Time && !isMasterAlive {
 
 		select {
@@ -92,7 +98,7 @@ func main() {
 		default:
 			time.Sleep(1 * time.Second)
 			timer++
-			println(timer, "second")
+			println(".")
 
 		}
 	}
@@ -128,6 +134,8 @@ func main() {
 
 	// ------ Other channels ------------
 	sleeperDetected := make(chan bool)
+	timeTick := make(chan bool)
+
 	// ----- Drivers goroutines ---------
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
@@ -135,11 +143,12 @@ func main() {
 	go elevio.PollStopButton(drv_stop)
 
 	// ----- Messaging goroutines ---------
-	go bcast.Transmitter(Port_msgs, sendMsg, sendOrderChan, sendOrdersChan)
-	go bcast.Receiver(Port_msgs, rcvdMsg, rcvdOrderChan, rcvdOrdersChan)
+	go bcast.Transmitter(conf.Port_msgs, sendMsg, sendOrderChan, sendOrdersChan)
+	go bcast.Receiver(conf.Port_msgs, rcvdMsg, rcvdOrderChan, rcvdOrdersChan)
 
 	// ----- Other goroutines ---------
 	go elev.SleeperDetection(sleeperDetected)
+	go Timer(timeTick)
 
 	for {
 		select {
@@ -170,7 +179,7 @@ func main() {
 			elev.Orders.SetOrder(button.Floor, button.Button)
 
 			} */
-			sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
+			// sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 			//!SECTION ----------
 
 			//SECTION ---- When arrive on the floor ----
@@ -190,7 +199,7 @@ func main() {
 			// fmt.Println("current floor:", elev.GetFloor())
 			elev.Orders.Print()
 
-			sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
+			// sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 		//!SECTION ---------
 
 		// SECTION ------- Messaging -------
@@ -212,7 +221,6 @@ func main() {
 			// 	go elev.NextOrder()
 
 			// }
-			sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 		// !SECTION
 
 		// SECTION ---- Recived orders obj msg ---
@@ -299,6 +307,12 @@ func main() {
 			if s {
 				elev.MoveOn()
 			}
+		case u := <-timeTick:
+			if u {
+				sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
+
+			}
+
 		// ----------- peer system, M/S control -------------
 		case p := <-peerUpdateCh:
 

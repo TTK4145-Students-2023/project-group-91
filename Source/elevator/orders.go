@@ -100,44 +100,44 @@ func (o *Orders) AddOrders(orders Orders) {
 	}
 
 }
-func (o *Orders) CompleteOrder(floor int, dir int, e SemiElev) {
-	fmt.Println("dir:", dir)
+func (o *Orders) CompleteOrder(floor int, dir int, e SemiElev) int {
+	// fmt.Println("dir:", dir)
+	nextDir := 0
 	if dir < 0 {
-		// fmt.Println(" down compleated")
 		o.HallDown[floor] = false
 		//FIXME e.Orders.HallDown[floor] = false
 		elevio.SetButtonLamp(1, floor, false)
+		nextDir = -1
 
 	} else if dir > 0 {
 		o.HallUp[floor] = false
 		//FIXME e.Orders.HallUp[floor] = false
 		elevio.SetButtonLamp(0, floor, false)
-		// fmt.Println(" up compleated")
+		nextDir = 1
 
 	}
 	if floor == conf.Num_Of_Flors-1 {
 		o.HallDown[floor] = false
 		//FIXME e.Orders.HallDown[floor] = false
 		elevio.SetButtonLamp(1, floor, false)
+		nextDir = -1
 	}
 	if floor == 0 {
 		o.HallUp[floor] = false
 		//FIXME e.Orders.HallUp[floor] = false
 		elevio.SetButtonLamp(0, floor, false)
+		nextDir = 1
 	}
 
-	// fmt.Println(" and cabin compleated")
 	o.Cab[floor] = false
 	//FIXME e.Orders.Cab[floor] = false
-	// o.HallUp[floor] = false
-	// o.HallDown[floor] = false
 	o.NumOfOrders--
 	//FIXME e.Orders.NumOfOrders--
-	// elevio.SetButtonLamp(0, floor, false)
-	// elevio.SetButtonLamp(1, floor, false)
 	elevio.SetButtonLamp(2, floor, false)
-	o.Print()
 
+	// NOTE show the list of orders
+	o.Print()
+	return nextDir
 }
 
 func (o *Orders) IsAny(butType int) bool {
