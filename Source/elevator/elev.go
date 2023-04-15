@@ -206,14 +206,55 @@ func (e *Elev) CloseDoors() bool {
 	}
 
 }
-func (e Elev) UpdateLights() {
-	for _, el := range e.Elevs {
+func (e *Elev) compleateElevsOrders(floor, dir int) {
+	for i, el := range e.Elevs {
+		if dir >= 1 {
+			for f := range el.Orders.HallUp {
+				if f == floor {
+					e.Elevs[i].Orders.HallUp[f] = false
+				}
+			}
+		}
+		if dir <= -1 {
+			for f := range el.Orders.HallDown {
+				if f == floor {
+					e.Elevs[i].Orders.HallDown[f] = false
+				}
+			}
+		}
+	}
+}
+func (e Elev) UpdateLightsSum() {
 
+	var lampsUp [conf.Num_Of_Flors]int
+	var lampsDown [conf.Num_Of_Flors]int
+
+	for _, el := range e.Elevs {
 		for i, v := range el.Orders.HallUp {
-			elevio.SetButtonLamp(elevio.BT_HallUp, i, v)
+			if v {
+				lampsUp[i]++
+			}
 		}
 		for i, v := range el.Orders.HallDown {
-			elevio.SetButtonLamp(elevio.BT_HallDown, i, v)
+			if v {
+				lampsDown[i]++
+			}
+
+		}
+	}
+	for i, v := range lampsUp {
+		if v > 0 {
+			elevio.SetButtonLamp(elevio.BT_HallUp, i, true)
+		} else {
+
+			elevio.SetButtonLamp(elevio.BT_HallUp, i, false)
+		}
+	}
+	for i, v := range lampsDown {
+		if v > 0 {
+			elevio.SetButtonLamp(elevio.BT_HallDown, i, true)
+		} else {
+			elevio.SetButtonLamp(elevio.BT_HallDown, i, false)
 		}
 	}
 }
@@ -259,8 +300,9 @@ func (e *Elev) MoveOn() {
 			}
 			// case when someone press the button of the floor where they currently are
 
-			e.Orders.CompleteOrder(e.CurFloor, 1, e.GetMeFromSemiElevs())
-			e.Orders.CompleteOrder(e.CurFloor, -1, e.GetMeFromSemiElevs())
+			e.CompleteOrder(e.CurFloor)
+			// e.Orders.CompleteOrder(e.CurFloor, 1, e.Elevs)
+			// e.Orders.CompleteOrder(e.CurFloor, -1, e.Elevs)
 			// fmt.Print("__4__")
 
 			return
@@ -291,6 +333,7 @@ func (e *Elev) SleeperDetection(sleeperDetected chan bool) {
 func (e *Elev) CompleteOrder(floor int) bool {
 	// stop, open doors, wait, close, go for next order
 	// e.Orders.Print()
+	e.UpdateLightsSum()
 
 	e.Stop()
 
@@ -298,7 +341,8 @@ func (e *Elev) CompleteOrder(floor int) bool {
 		e.OpenDoors()
 	}
 
-	e.NextDir = e.Orders.CompleteOrder(floor, e.PrevDir, e.GetMeFromSemiElevs())
+	e.NextDir = e.Orders.CompleteOrder(floor, e.PrevDir, e.Elevs)
+	e.compleateElevsOrders(floor, e.NextDir)
 	time.Sleep(conf.Open_Door_Time * time.Second)
 
 	if e.DoorOpen {
@@ -306,7 +350,7 @@ func (e *Elev) CompleteOrder(floor int) bool {
 	}
 
 	e.MoveOn()
-
+	e.UpdateLightsSum()
 	return true
 }
 

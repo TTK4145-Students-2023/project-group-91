@@ -86,7 +86,7 @@ func main() {
 
 	timer := 0
 	// waiting for any signal from Master ...
-	println("Waiting for master.")
+	print("Waiting for master.")
 	for timer < conf.Wait_For_Master_Time && !isMasterAlive {
 
 		select {
@@ -98,7 +98,7 @@ func main() {
 		default:
 			time.Sleep(1 * time.Second)
 			timer++
-			println(".")
+			print(".")
 
 		}
 	}
@@ -161,8 +161,8 @@ func main() {
 
 				elev.Orders.SetOrder(button.Floor, button.Button)
 				elev.CompleteOrder(button.Floor)
-				elev.Orders.CompleteOrder(button.Floor, 1, elev.GetMeFromSemiElevs())
-				elev.Orders.CompleteOrder(button.Floor, -1, elev.GetMeFromSemiElevs())
+				elev.Orders.CompleteOrder(button.Floor, 1, elev.Elevs)
+				elev.Orders.CompleteOrder(button.Floor, -1, elev.Elevs)
 
 			} else if button.Button == elevio.BT_Cab { // if the order is cabin order add it to OUR orders
 
@@ -216,6 +216,7 @@ func main() {
 				}
 
 			}
+			elev.UpdateLightsSum()
 
 		// !SECTION
 
@@ -227,7 +228,7 @@ func main() {
 
 			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
 				elev.Orders.AddOrders(ors.Orders, "U", "D")
-				elev.UpdateLights()
+				// elev.UpdateLightsSum()
 
 				// checking if we got some orders to compleate
 				if !elev.IsMoving() {
@@ -248,6 +249,8 @@ func main() {
 				}
 				//NOTE printing debbuging list of orders
 				elev.Orders.Print()
+			} else {
+				// elev.UpdateLightsSum()
 			}
 		// !SECTION
 
@@ -307,7 +310,7 @@ func main() {
 			}
 		case u := <-timeTick:
 			if u {
-
+				elev.UpdateLightsSum()
 				sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 				if elev.ImTheMaster() {
 					sendBackup <- msgs.PrepareBackupMsg(elev)

@@ -133,7 +133,7 @@ func (o *Orders) AddOrders(orders Orders, ordType ...string) {
 
 	}
 }
-func (o *Orders) CompleteOrder(floor int, dir int, e SemiElev) int {
+func (o *Orders) CompleteOrder(floor int, dir int, Elevs []SemiElev) int {
 	// fmt.Println("dir:", dir)
 	nextDir := 0
 	if dir < 0 {
