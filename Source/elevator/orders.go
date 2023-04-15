@@ -223,14 +223,6 @@ func (o Orders) HowManyOrders() int {
 	return o.NumOfOrders
 }
 
-func (o *Orders) UpdateLights() {
-	for i, v := range o.HallUp {
-		elevio.SetButtonLamp(elevio.BT_HallUp, i, v)
-	}
-	for i, v := range o.HallDown {
-		elevio.SetButtonLamp(elevio.BT_HallDown, i, v)
-	}
-}
 func (o Orders) Print() {
 	fmt.Print("\n\t\t======Orders======\n")
 
