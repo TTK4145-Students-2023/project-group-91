@@ -86,19 +86,52 @@ func (o *Orders) ClearAll() {
 	o.NumOfOrders = 0
 
 }
-func (o *Orders) AddOrders(orders Orders) {
+func (o *Orders) AddOrders(orders Orders, ordType ...string) {
 
-	for i := range o.HallUp {
-		if orders.HallUp[i] {
-			o.HallUp[i] = true
+	up := false
+	down := false
+	cab := false
+
+	for _, v := range ordType {
+		if v[0] == 'U' || v[0] == 'u' {
+			up = true
+		}
+		if v[0] == 'D' || v[0] == 'd' {
+			down = true
+		}
+		if v[0] == 'C' || v[0] == 'c' {
+			cab = true
+		}
+
+	}
+
+	if up {
+
+		for i := range o.HallUp {
+			if orders.HallUp[i] {
+				o.HallUp[i] = true
+				o.NumOfOrders++
+			}
 		}
 	}
-	for i := range o.HallDown {
-		if orders.HallDown[i] {
-			o.HallDown[i] = true
+	if down {
+		for i := range o.HallDown {
+			if orders.HallDown[i] {
+				o.HallDown[i] = true
+				o.NumOfOrders++
+			}
 		}
-	}
 
+	}
+	if cab {
+		for i := range o.Cab {
+			if orders.Cab[i] {
+				o.Cab[i] = true
+				o.NumOfOrders++
+			}
+		}
+
+	}
 }
 func (o *Orders) CompleteOrder(floor int, dir int, e SemiElev) {
 	fmt.Println("dir:", dir)
