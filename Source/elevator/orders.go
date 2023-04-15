@@ -133,9 +133,9 @@ func (o *Orders) AddOrders(orders Orders, ordType ...string) {
 
 	}
 }
-func (o *Orders) CompleteOrder(floor int, dir conf.Directions, Elevs []SemiElev) int {
+func (o *Orders) CompleteOrder(floor int, dir conf.Directions, Elevs []SemiElev) conf.Directions {
 	// fmt.Println("dir:", dir)
-	nextDir := 0
+	nextDir := conf.None
 	if dir < 0 {
 		o.HallDown[floor] = false
 		//FIXME e.Orders.HallDown[floor] = false
@@ -219,8 +219,47 @@ func (o Orders) FirstDown() int {
 	return -1
 }
 
-func (o Orders) HowManyOrders() int {
-	return o.NumOfOrders
+func (o Orders) CountOrders(ordType ...string) int {
+	up := false
+	down := false
+	cab := false
+	i := 0
+	for _, v := range ordType {
+		if v[0] == 'U' || v[0] == 'u' {
+			up = true
+		}
+		if v[0] == 'D' || v[0] == 'd' {
+			down = true
+		}
+		if v[0] == 'C' || v[0] == 'c' {
+			cab = true
+		}
+
+	}
+	if up {
+		for _, v := range o.HallUp {
+			if v {
+				i++
+			}
+		}
+	}
+	if down {
+		for _, v := range o.HallDown {
+			if v {
+				i++
+			}
+		}
+	}
+	if cab {
+		for _, v := range o.Cab {
+			if v {
+				i++
+			}
+		}
+	}
+
+	return i
+
 }
 
 func (o Orders) Print() {

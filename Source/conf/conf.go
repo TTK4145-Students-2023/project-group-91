@@ -21,4 +21,5 @@ const (
 	Up   Directions = 1
 	Cab  Directions = 0
 	Down Directions = -1
+	None Directions = 0
 )

@@ -41,7 +41,7 @@ func (e *SemiElev) CountOrders() {
 type Elev struct {
 	Dir      conf.Directions
 	PrevDir  conf.Directions
-	NextDir  int
+	NextDir  conf.Directions
 	CurFloor int
 	DoorOpen bool
 	Orders   Orders
@@ -198,7 +198,7 @@ func (e *Elev) CloseDoors() bool {
 	}
 
 }
-func (e *Elev) compleateElevsOrders(floor, dir int) {
+func (e *Elev) compleateElevsOrders(floor int, dir conf.Directions) {
 	for i, el := range e.Elevs {
 		if dir >= 1 {
 			for f := range el.Orders.HallUp {
@@ -252,7 +252,15 @@ func (e Elev) UpdateLightsSum() {
 }
 func (e *Elev) MoveOn() {
 	// going for the next order
-	if e.PrevDir > 0 {
+
+	if e.NextDir == conf.Up {
+
+		e.GoUp()
+		return
+
+	}
+
+	if e.PrevDir == conf.Up {
 		for i := e.CurFloor; i < conf.Num_Of_Flors; i++ {
 
 			if e.Orders.HallUp[i] || e.Orders.Cab[i] {
@@ -264,7 +272,12 @@ func (e *Elev) MoveOn() {
 		}
 	}
 
-	if e.PrevDir < 0 {
+	if e.NextDir == conf.Down {
+		e.GoDown()
+		return
+	}
+
+	if e.PrevDir == conf.Down {
 		for i := e.CurFloor; i > 0; i-- {
 
 			if e.Orders.HallDown[i] || e.Orders.Cab[i] {
@@ -352,15 +365,16 @@ func (e *Elev) ShouldIstop(floor int) bool {
 	e.UpdateFloor()
 	if floor == e.CurFloor {
 
-		tf, d := e.Orders.CheckOrder(floor)
+		orderExists, d := e.Orders.CheckOrder(floor)
 
-		if tf {
+		if orderExists {
 
 			// if e.Orders.NumOfOrders == 1 {
 			// 	return true
 			// }
-
-			if d != 0 && e.Dir != d && e.Dir != 0 && e.Orders.NumOfOrders > 1 {
+			fmt.Println("num of orders:", e.Orders.CountOrders())
+			if d != 0 && e.Dir != d && e.Orders.CountOrders() > 1 {
+				fmt.Println("NoSTOP")
 				return false
 			}
 			//  cab order || not moving || same dir	  || there is no orders in
@@ -391,146 +405,6 @@ func (e *Elev) ShouldIstop(floor int) bool {
 	}
 
 	return false
-}
-
-func (e Elev) ShouldIstop2(floor int) bool {
-	// If the elevator has an active order for the current floor, it should stop
-	if e.Orders.Cab[floor] || e.Orders.HallUp[floor] || e.Orders.HallDown[floor] {
-		return true
-	}
-
-	// Check if there are any orders in the direction that the elevator is going
-	var ordersInDirection []int
-	for f := floor + 1; f < conf.Num_Of_Flors; f++ {
-		if e.Orders.HallUp[f] || e.Orders.Cab[f] {
-			ordersInDirection = append(ordersInDirection, f)
-		}
-	}
-	for f := floor - 1; f >= 0; f-- {
-		if e.Orders.HallDown[f] || e.Orders.Cab[f] {
-			ordersInDirection = append(ordersInDirection, f)
-		}
-	}
-
-	if len(ordersInDirection) == 0 {
-		// If there are no orders in the direction that the elevator is going, it should stop
-		return true
-	} else if len(ordersInDirection) == 1 {
-		// If there is only one order in the direction that the elevator is going, it should stop
-		return true
-	} else {
-		// If there are multiple orders in the direction that the elevator is going,
-		// we need to check if we should stop at the current floor or continue to the next one
-
-		// Check if there is an order on the current floor that is in the direction that the elevator is going
-		oExists, oType := e.Orders.CheckOrder(floor)
-		if oExists && ((e.Dir == conf.Up && oType == conf.Up) || (e.Dir == conf.Down && oType == conf.Down)) {
-			return true
-		}
-
-		// Find the nearest order in the direction that the elevator is going
-		var nearestOrder int
-		if e.Dir == conf.Up {
-			nearestOrder = ordersInDirection[0]
-			for _, f := range ordersInDirection {
-				if f < nearestOrder {
-					nearestOrder = f
-				}
-			}
-		} else if e.Dir == conf.Down {
-			nearestOrder = ordersInDirection[0]
-			for _, f := range ordersInDirection {
-				if f > nearestOrder {
-					nearestOrder = f
-				}
-			}
-		}
-
-		// Check if we should skip the current floor to go to the nearest order first
-		if e.Dir == conf.Up && nearestOrder < floor {
-			return false
-		} else if e.Dir == conf.Down && nearestOrder > floor {
-			return false
-		} else {
-			return true
-		}
-	}
-}
-func (e Elev) ShouldIstop3(floor int) bool {
-	// Check if there is any order on current floor and return true/false
-	if floor == -1 {
-		return false
-	}
-
-	// Check if there is a cab order on current floor
-	if e.Orders.Cab[floor] {
-		return true
-	}
-
-	// Check if there is a hall order on current floor in the same direction as the elevator
-	if (e.Dir == conf.Up && e.Orders.HallUp[floor]) || (e.Dir == conf.Down && e.Orders.HallDown[floor]) {
-		return true
-	}
-
-	// Check if there is a hall order on a floor that we will pass by on our current direction
-	if e.Dir == conf.Up {
-		for f := floor + 1; f < conf.Num_Of_Flors; f++ {
-			if e.Orders.HallUp[f] || e.Orders.Cab[f] {
-				return false
-			}
-			if e.Orders.HallDown[f] {
-				return true
-			}
-		}
-	} else if e.Dir == conf.Down {
-		for f := floor - 1; f >= 0; f-- {
-			if e.Orders.HallDown[f] || e.Orders.Cab[f] {
-				return false
-			}
-			if e.Orders.HallUp[f] {
-				return true
-			}
-		}
-	}
-
-	// No orders to stop for
-	return false
-}
-
-func (e Elev) hasOrdersAbove(floor int) bool {
-	for i := floor + 1; i < conf.Num_Of_Flors; i++ {
-		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
-			return true
-		}
-	}
-	return false
-}
-
-func (e Elev) hasOrdersBelow(floor int) bool {
-	for i := floor - 1; i >= 0; i-- {
-		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
-			return true
-		}
-	}
-	return false
-}
-
-func (e Elev) closestOrderAbove(floor int) int {
-	for i := floor + 1; i < conf.Num_Of_Flors; i++ {
-		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
-			return i
-		}
-	}
-	return conf.Num_Of_Flors
-}
-
-func (e Elev) closestOrderBelow(floor int) int {
-	for i := floor - 1; i >= 0; i-- {
-		if e.Orders.HallUp[i] || e.Orders.HallDown[i] || e.Orders.Cab[i] {
-			return i
-		}
-	}
-	return -1
 }
 
 func (e Elev) NoOrders() bool {
