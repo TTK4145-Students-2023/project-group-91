@@ -253,12 +253,12 @@ func (e Elev) UpdateLightsSum() {
 func (e *Elev) MoveOn() {
 	// going for the next order
 
-	if e.Orders.CountOrders("Cab", "Up", "Down") == 0 {
-		e.Stop()
-		return
-	}
+	// if e.Orders.CountOrders("Cab", "Up", "Down") == 0 {
+	// 	e.Stop()
+	// 	return
+	// }
 
-	if e.NextDir == conf.Up {
+	if e.NextDir == conf.Up && e.Orders.CountOrders("Up") > 0 {
 		e.GoUp()
 		return
 	}
@@ -275,7 +275,7 @@ func (e *Elev) MoveOn() {
 		}
 	}
 
-	if e.NextDir == conf.Down {
+	if e.NextDir == conf.Down && e.Orders.CountOrders("Down") != 0 {
 		e.GoDown()
 		return
 	}
@@ -461,13 +461,31 @@ func (e *Elev) UpdateElev(id int, a SemiElev) {
 	}
 }
 
-func (e *Elev) RemElev(id int) {
+func (e *Elev) RemElevOLD(id int) {
 	for i := 0; i < len(e.Elevs); i++ {
 		if e.Elevs[i].ID == id {
 			e.Elevs[i].ID = -1
 			e.Elevs[i].CountOrders()
 		}
 	}
+}
+
+func (e *Elev) RemElev(id int) {
+	for i, el := range e.Elevs {
+		if el.ID == id {
+			e.Elevs = append(e.Elevs[:i], e.Elevs[i+1:]...)
+			return
+		}
+	}
+}
+func (e Elev) GiveElev(id int) SemiElev {
+
+	for _, el := range e.Elevs {
+		if el.ID == id {
+			return el
+		}
+	}
+	return SemiElev{ID: -1}
 }
 
 func (e *Elev) giveOrderTo(elevID int, floor int, dir conf.Directions, order bool) {

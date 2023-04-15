@@ -86,20 +86,24 @@ func (o *Orders) ClearAll() {
 	o.NumOfOrders = 0
 
 }
-func (o *Orders) AddOrders(orders Orders, ordType ...string) {
+func (o *Orders) AddOrders(orders Orders, ordTypes ...string) {
 	up := false
 	down := false
 	cab := false
 
-	for _, v := range ordType {
+	for _, v := range ordTypes {
+		fmt.Println(v)
 		if v[0] == 'U' || v[0] == 'u' {
 			up = true
+			fmt.Println("Up=true")
 		}
 		if v[0] == 'D' || v[0] == 'd' {
 			down = true
+			fmt.Println("Down=true")
 		}
 		if v[0] == 'C' || v[0] == 'c' {
 			cab = true
+			fmt.Println("Cab=true")
 		}
 
 	}

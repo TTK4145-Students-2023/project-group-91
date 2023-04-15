@@ -9,6 +9,7 @@ normal Elev struct
 // FIXME[epic=bugs] - 	sometimes when pressing buttons while the elevator is between two floors there is an error: "core.exception.AssertError@src/sim_server.d(536): Tried to set floor indicator to non-existent floor 255
 // 						std.concurrency.OwnerTerminated@std/concurrency.d(236): Owner terminated
 // 						std.concurrency.OwnerTerminated@std/concurrency.d(236): Owner terminated"
+// Is it fixed by itself somehow???
 
 // FIXME[epic=bugs] - sometimes the orders (espesially on the last floor) is served but when elev will move somewhere else the light is lighting up again on its own
 package main
@@ -319,7 +320,7 @@ func main() {
 
 		// ----------- peer system, M/S control -------------
 		case p := <-peerUpdateCh:
-
+			elev.UpdateLightsSum()
 			// ---- network info ----
 
 			// fmt.Printf("Peer update:\n")
@@ -335,6 +336,7 @@ func main() {
 			if roles.HowManyMasters(p.Peers) != 1 {
 				if maxID := roles.MaxIdAlive(p.Peers); maxID == elev.GetID_I() {
 					elev.ChangeMode(conf.Master)
+
 				} else {
 					elev.ChangeMode(conf.Slave)
 
@@ -342,6 +344,32 @@ func main() {
 				role_chan <- elev.GetMode()
 			}
 
+			// SECTION ---- Backup activation ----
+			if elev.ImTheMaster() {
+
+				for _, lost := range p.Lost {
+
+					if lost != "" {
+
+						lostID, _ := strconv.Atoi(lost[1:])
+
+						if lostID != elev.ID {
+
+							elev.Orders.AddOrders(elev.GiveElev(lostID).Orders, "Up", "Down")
+							elev.RemElev(lostID)
+
+						}
+					}
+				}
+
+				elev.DistributeOrders()
+				for _, e := range elev.Elevs { // send distributed orders to all elevs
+					sendOrdersChan <- msgs.PrepareMsgOrders(elev, e.Orders, e.ID)
+				}
+			}
+			elev.UpdateLightsSum()
+
+			// !SECTION ------------
 			// for _, id := range p.Lost {
 			// 	fmt.Println(id)
 			// 	for _, e := range elev.Elevs {
