@@ -23,6 +23,7 @@ import (
 	"Source/elevio"
 	"Source/network/bcast"
 	"Source/network/localip"
+	"Source/network/msgs"
 	"Source/network/peers"
 	"Source/roles"
 	"flag"
@@ -31,64 +32,6 @@ import (
 	"strings"
 	"time"
 )
-
-const Open_Door_Time = 2
-const Num_Of_Flors = 4
-
-type Msg struct {
-	SenderID   int
-	SenderRole string
-	Dir        int
-	Floor      int
-	Orders     elevator.Orders
-	Message    string
-}
-type MsgOrder struct {
-	SenderID   int
-	SenderRole string
-	BType      elevio.ButtonType
-	BFloor     int
-	ReciverID  int
-}
-type MsgOrders struct {
-	SenderID   int
-	SenderRole string
-	Orders     elevator.Orders
-	ReciverID  int
-}
-
-func PrepareMsg(m string, e elevator.Elev) Msg {
-	// preparing message as a special struct
-	msg := Msg{
-		SenderID:   e.GetID_I(),
-		SenderRole: e.GetMode(),
-		Floor:      e.GetFloor(),
-		Dir:        e.GetDirection(),
-		Orders:     e.Orders,
-		Message:    m}
-
-	return msg
-}
-
-func PrepareMsgOrder(floor int, button elevio.ButtonType, e elevator.Elev, recivID int) MsgOrder {
-	msg := MsgOrder{
-		SenderID:   e.GetID_I(),
-		SenderRole: e.GetMode(),
-		BType:      button,
-		BFloor:     floor,
-		ReciverID:  recivID}
-
-	return msg
-}
-func PrepareMsgOrders(e elevator.Elev, o elevator.Orders, recivID int) MsgOrders {
-	msg := MsgOrders{
-		SenderID:   e.GetID_I(),
-		SenderRole: e.GetMode(),
-		Orders:     o,
-		ReciverID:  recivID}
-
-	return msg
-}
 
 func main() {
 	// runtime.GOMAXPROCS(10)
@@ -124,7 +67,7 @@ func main() {
 	fmt.Println("ID:", id)
 	fmt.Println("PORT:", port)
 
-	elevio.Init("localhost:"+port, Num_Of_Flors)
+	elevio.Init("localhost:"+port, conf.Num_Of_Flors)
 
 	// ----- creating elev struct and initialization -----
 	elev := elevator.Elev{}
@@ -173,13 +116,13 @@ func main() {
 	//!SECTION -----------------------
 
 	// ----- Messages channels ---------
-	sendMsg := make(chan Msg)
-	rcvdMsg := make(chan Msg)
+	sendMsg := make(chan msgs.Msg)
+	rcvdMsg := make(chan msgs.Msg)
 
-	sendOrderChan := make(chan MsgOrder)
-	rcvdOrderChan := make(chan MsgOrder)
-	sendOrdersChan := make(chan MsgOrders)
-	rcvdOrdersChan := make(chan MsgOrders)
+	sendOrderChan := make(chan msgs.MsgOrder)
+	rcvdOrderChan := make(chan msgs.MsgOrder)
+	sendOrdersChan := make(chan msgs.MsgOrders)
+	rcvdOrdersChan := make(chan msgs.MsgOrders)
 
 	// ----- Drivers channels -----------
 	drv_buttons := make(chan elevio.ButtonEvent)
@@ -225,13 +168,13 @@ func main() {
 
 			} else /*if !elev.ImTheMaster()*/ { // else send order to master (if it is the master it will send it to itself)
 
-				sendOrderChan <- PrepareMsgOrder(button.Floor, button.Button, elev, -1)
+				sendOrderChan <- msgs.PrepareMsgOrder(button.Floor, button.Button, elev, -1)
 
 			} /*else {
 			elev.Orders.SetOrder(button.Floor, button.Button)
 
 			} */
-			sendMsg <- PrepareMsg("U", elev) // sending updating msg about our state
+			sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 			//!SECTION ----------
 
 			//SECTION ---- When arrive on the floor ----
@@ -251,7 +194,7 @@ func main() {
 			// fmt.Println("current floor:", elev.GetFloor())
 			elev.Orders.Print()
 
-			sendMsg <- PrepareMsg("U", elev) // sending updating msg about our state
+			sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 		//!SECTION ---------
 
 		// SECTION ------- Messaging -------
@@ -263,7 +206,7 @@ func main() {
 				elev.DistributeOrders()                    //distribute orders among elevs
 				// elev.DistributeOrdersGPT()
 				for _, e := range elev.Elevs { // send distributed orders to all elevs
-					sendOrdersChan <- PrepareMsgOrders(elev, e.Orders, e.ID)
+					sendOrdersChan <- msgs.PrepareMsgOrders(elev, e.Orders, e.ID)
 				}
 
 			}
@@ -273,7 +216,7 @@ func main() {
 			// 	go elev.NextOrder()
 
 			// }
-			sendMsg <- PrepareMsg("U", elev) // sending updating msg about our state
+			sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 		// !SECTION
 
 		// SECTION ---- Recived orders obj msg ---
