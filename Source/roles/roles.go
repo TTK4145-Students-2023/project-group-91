@@ -1,6 +1,8 @@
 package roles
 
-import "strconv"
+import (
+	"strconv"
+)
 
 func IsMasterAlive(peers []string) bool {
 	for _, v := range peers {
@@ -41,9 +43,9 @@ func MaxIdAlive(peers []string) int {
 	return max
 }
 func AmiAlone(peers []string) bool {
-	if len(peers) == 1 {
-		return true
-	} else {
-		return false
-	}
+	return len(peers) <= 1
+
+}
+func NoOneIsHere(peers []string) bool {
+	return len(peers) <= 0
 }

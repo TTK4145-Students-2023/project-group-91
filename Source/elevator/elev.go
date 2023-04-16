@@ -310,6 +310,28 @@ func (e *Elev) MoveOn() {
 	}
 }
 
+func (e *Elev) MotorErrorDetection(motorRrrorDetected chan bool) {
+	timer := 0
+	lastFloor := e.GetFloor()
+
+	for {
+		time.Sleep(time.Millisecond * 1000)
+		timer++
+		floor := e.CurFloor
+		// fmt.Println("last:", lastFloor)
+		// fmt.Println("curr:", floor)
+		// fmt.Println("timer:", timer)
+		if lastFloor != floor || e.Orders.CountOrders("Up", "Down", "Cab") <= 0 {
+			timer = 0
+			lastFloor = floor
+			motorRrrorDetected <- false
+		}
+		if timer >= conf.Motor_Error_Detection_Time {
+			motorRrrorDetected <- true
+		}
+	}
+
+}
 func (e *Elev) SleeperDetection(sleeperDetected chan bool) {
 	// Goroutine to detect elevators that stuck and doing nothing bcs of uknown reason
 	timer := 0

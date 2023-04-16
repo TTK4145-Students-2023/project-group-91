@@ -36,7 +36,7 @@ func Timer(update chan bool) {
 func main() {
 	// runtime.GOMAXPROCS(10)
 	// ---------- Initialization -----------
-
+	var ImAlone = true
 	var id string
 	var port string
 	flag.StringVar(&id, "id", "", "id of this peer")         // custom id for localhost
@@ -132,6 +132,7 @@ func main() {
 
 	// ------ Other channels ------------
 	sleeperDetected := make(chan bool)
+	motorErrorDetected := make(chan bool)
 	timeTick := make(chan bool)
 
 	// ----- Drivers goroutines ---------
@@ -146,6 +147,7 @@ func main() {
 
 	// ----- Other goroutines ---------
 	go elev.SleeperDetection(sleeperDetected)
+	go elev.MotorErrorDetection(motorErrorDetected)
 	go Timer(timeTick)
 
 	for {
@@ -169,6 +171,8 @@ func main() {
 					go elev.MoveOn()
 				}
 
+			} else if ImAlone {
+				elev.Orders.SetOrder(button.Floor, button.Button)
 			} else {
 				sendOrderChan <- msgs.PrepareMsgOrder(button.Floor, button.Button, elev, -1)
 			}
@@ -298,6 +302,12 @@ func main() {
 			// if there is 0 or more than one masters it means that we have to choose the new one
 			// new master is choosen based on the highest ID in the nwtwork
 			// if there is more masters rest will be degraded
+			if roles.NoOneIsHere(p.Peers) {
+				ImAlone = true
+			} else {
+				ImAlone = false
+
+			}
 			if roles.HowManyMasters(p.Peers) != 1 {
 				if maxID := roles.MaxIdAlive(p.Peers); maxID == elev.GetID_I() {
 					elev.ChangeMode(conf.Master)
@@ -334,6 +344,13 @@ func main() {
 			}
 			elev.UpdateLightsSum()
 
+		case er := <-motorErrorDetected:
+			if er {
+				fmt.Print("MOTOR ERROR")
+				peerTxEnable <- false
+			} else {
+				peerTxEnable <- true
+			}
 		case stop := <-drv_stop:
 			if stop {
 				elev.Stop()

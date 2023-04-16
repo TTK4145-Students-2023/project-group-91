@@ -8,6 +8,7 @@ const Wait_For_Order_Time = 5
 const Port_msgs = 2000           // port through which the messages are send
 const Update_Time_Interval = 200 // [in miliseconds]
 const Max_Orders_Per_Elevator = Num_Of_Flors
+const Motor_Error_Detection_Time = 7
 
 type ElevMode int
 
