@@ -1,8 +1,3 @@
-/* TODO - 	connect the main with backup
-Master elevator have a array field called Elevs with all nessesary data of others (and himself also) elevators
-it stores their orders, roles, id, direction etc Elevs is an array of SemiElev struct type to have less data than
-normal Elev struct
-*/
 // TODO - wait for order on the same floor
 
 // buglist:
@@ -11,7 +6,8 @@ normal Elev struct
 // 						std.concurrency.OwnerTerminated@std/concurrency.d(236): Owner terminated"
 // Is it fixed by itself somehow???
 
-// FIXME[epic=bugs] - sometimes the orders (espesially on the last floor) is served but when elev will move somewhere else the light is lighting up again on its own
+// FIXME[epic=bugs] - sometimes program crashes on the system start
+
 package main
 
 import (
@@ -76,7 +72,7 @@ func main() {
 	elev.Init()
 	elev.SetID(iid)
 
-	//SECTION ----- Setting elevs Role -----
+	//SECTION ----- Setting elevs Role (master/slave) -----
 
 	isMasterAlive := false
 
@@ -173,48 +169,36 @@ func main() {
 					go elev.MoveOn()
 				}
 
-			} else /*if !elev.ImTheMaster()*/ { // else send order to master (if it is the master it will send it to itself)
-
+			} else {
 				sendOrderChan <- msgs.PrepareMsgOrder(button.Floor, button.Button, elev, -1)
+			}
 
-			} /*else {
-			elev.Orders.SetOrder(button.Floor, button.Button)
-
-			} */
-			// sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 			//!SECTION ----------
 
-			//SECTION ---- When arrive on the floor ----
+		//SECTION ---- When arrive on the floor ----
 		case floor := <-drv_floors:
 
-			//NOTE just printing some debugging stuff
-			fmt.Println("elevs:")
-			for _, e := range elev.Elevs {
-				fmt.Println(e.ID)
-			}
 			elev.UpdateFloor()
 			if elev.ShouldIstop(floor) { // check if it should stop to serve the order, and serve it if yes
 				go elev.CompleteOrder(floor)
 			}
 
-			//NOTE just printing some debugging stuff
-			// fmt.Println("current floor:", elev.GetFloor())
+			//NOTE printing elev Order list (for debuging)
 			elev.Orders.Print()
 
-			// sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
 		//!SECTION ---------
 
 		// SECTION ------- Messaging -------
+
 		// SECTION ---- Recived single order msg ----
 		case o := <-rcvdOrderChan:
 
 			if elev.ImTheMaster() { // master got an order from other elev
 				elev.Orders.SetOrderTMP(o.BFloor, o.BType) // add it to its orders (without activation)
-				elev.DistributeOrdersGPT2()                //distribute orders among elevs
+				elev.DistributeOrdersV3()                  //distribute orders among elevs
 				for _, e := range elev.Elevs {             // send distributed orders to all elevs
 					sendOrdersChan <- msgs.PrepareMsgOrders(elev, e.Orders, e.ID)
 				}
-
 			}
 			elev.UpdateLightsSum()
 
@@ -223,12 +207,8 @@ func main() {
 		// SECTION ---- Recived orders obj msg ---
 		case ors := <-rcvdOrdersChan:
 
-			// fmt.Println("ReciverID:", ors.ReciverID)
-			// fmt.Println("ElevID:", elev.GetID_I())
-
 			if ors.ReciverID == elev.GetID_I() { // check if the message is for us (based on id)
 				elev.Orders.AddOrders(ors.Orders, "U", "D")
-				// elev.UpdateLightsSum()
 
 				// checking if we got some orders to compleate
 				if !elev.IsMoving() {
@@ -249,8 +229,6 @@ func main() {
 				}
 				//NOTE printing debbuging list of orders
 				elev.Orders.Print()
-			} else {
-				// elev.UpdateLightsSum()
 			}
 		// !SECTION
 
@@ -285,21 +263,9 @@ func main() {
 				}
 			}
 
-		// if m.SenderID != elev.GetID_I() {
-		// 	if m.SenderRole == "M" {
-		// 		// ---- Messages from Master
-		// 		// fmt.Println("m:	", m)
+		// !SECTION -----
+		// !SECTION -------
 
-		// 	} else {
-		// 		// ---- Messages from Others
-		// 		fmt.Println("SenderID:	", m.SenderID)
-		// 		fmt.Println("SenderRole:	", m.SenderRole)
-		// 		fmt.Println("Msg:		", m.Message)
-		// 	}
-
-		// }
-		// !SECTION
-		// !SECTION
 		case b := <-rcvdBackup:
 			if !elev.ImTheMaster() {
 				elev.Elevs = b.Elevs
@@ -312,19 +278,19 @@ func main() {
 			if u {
 				elev.UpdateLightsSum()
 				sendMsg <- msgs.PrepareMsg("U", elev) // sending updating msg about our state
+				// If we are the master -> send the backup msg to other elevators so every other elev is the system backup elevator
+				// In case of disconnection any orders from the backup will be added to the order pool and distributed among 'living' elevators
 				if elev.ImTheMaster() {
 					sendBackup <- msgs.PrepareBackupMsg(elev)
 				}
 			}
 
-		// ----------- peer system, M/S control -------------
+		// SECTION ------- peer system, Master/Slave control -------------
 		case p := <-peerUpdateCh:
 			elev.UpdateLightsSum()
 			// ---- network info ----
 
-			// fmt.Printf("Peer update:\n")
 			fmt.Printf("  Elevs alive:    %q\n", p.Peers)
-			// fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Disconnected Elev:     %q\n", p.Lost)
 
 			// ----------------------
@@ -361,32 +327,12 @@ func main() {
 					}
 				}
 
-				elev.DistributeOrdersGPT2()
+				elev.DistributeOrdersV3()
 				for _, e := range elev.Elevs { // send distributed orders to all elevs
 					sendOrdersChan <- msgs.PrepareMsgOrders(elev, e.Orders, e.ID)
 				}
 			}
 			elev.UpdateLightsSum()
-
-			// !SECTION ------------
-			// for _, id := range p.Lost {
-			// 	fmt.Println(id)
-			// 	for _, e := range elev.Elevs {
-			// 		if len(id) > 1 {
-			// 			idtmp, _ := strconv.Atoi(id[0:])
-			// 			fmt.Println(idtmp)
-			// 			if e.ID == idtmp {
-			// 				if elev.ImTheMaster() {
-			// 					elev.RemElev(e.ID)
-			// 					elev.Orders.AddOrders(e.Orders)
-			// 					fmt.Println("HHHHHHHHHHHHHHHHHHH")
-			// 					e.Orders.Print()
-			// 					elev.DistributeOrders()
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// }
 
 		case stop := <-drv_stop:
 			if stop {

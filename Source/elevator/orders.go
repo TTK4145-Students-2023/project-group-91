@@ -33,6 +33,7 @@ func (o *Orders) SetOrder(floor int, button elevio.ButtonType) {
 }
 
 func (o *Orders) SetOrderTMP(floor int, button elevio.ButtonType) {
+	// set order without lighting lights up
 	if button == 0 {
 		o.HallUp[floor] = true
 		o.NumOfOrders++
@@ -138,38 +139,31 @@ func (o *Orders) AddOrders(orders Orders, ordTypes ...string) {
 	}
 }
 func (o *Orders) CompleteOrder(floor int, dir conf.Directions, Elevs []SemiElev) conf.Directions {
-	// fmt.Println("dir:", dir)
 	nextDir := conf.None
 	if dir < 0 {
 		o.HallDown[floor] = false
-		//FIXME e.Orders.HallDown[floor] = false
 		elevio.SetButtonLamp(1, floor, false)
 		nextDir = -1
 
 	} else if dir > 0 {
 		o.HallUp[floor] = false
-		//FIXME e.Orders.HallUp[floor] = false
 		elevio.SetButtonLamp(0, floor, false)
 		nextDir = 1
 
 	}
 	if floor == conf.Num_Of_Flors-1 {
 		o.HallDown[floor] = false
-		//FIXME e.Orders.HallDown[floor] = false
 		elevio.SetButtonLamp(1, floor, false)
 		nextDir = -1
 	}
 	if floor == 0 {
 		o.HallUp[floor] = false
-		//FIXME e.Orders.HallUp[floor] = false
 		elevio.SetButtonLamp(0, floor, false)
 		nextDir = 1
 	}
 
 	o.Cab[floor] = false
-	//FIXME e.Orders.Cab[floor] = false
 	o.NumOfOrders--
-	//FIXME e.Orders.NumOfOrders--
 	elevio.SetButtonLamp(2, floor, false)
 
 	// NOTE show the list of orders

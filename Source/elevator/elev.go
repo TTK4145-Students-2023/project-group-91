@@ -9,6 +9,7 @@ import (
 )
 
 type SemiElev struct {
+	// mini elevator structure to store other elevators data
 	Dir       conf.Directions
 	CurFloor  int
 	Orders    Orders
@@ -22,11 +23,6 @@ func (e *SemiElev) CountOrders() {
 	// count number of the orders without the cabin orders
 
 	i := 0
-	// for _, v := range e.Orders.Cab {
-	// 	if v {
-	// 		i++
-	// 	}
-	// }
 	for _, v := range e.Orders.HallDown {
 		if v {
 			i++
@@ -37,9 +33,11 @@ func (e *SemiElev) CountOrders() {
 			i++
 		}
 	}
+	e.Orders.NumOfOrders = i
 }
 
 type Elev struct {
+	// Out main elevator structure responible for everything
 	Dir      conf.Directions
 	PrevDir  conf.Directions
 	NextDir  conf.Directions
@@ -59,6 +57,7 @@ func (e Elev) IsMoving() bool {
 	}
 }
 func (e Elev) GetMeFromSemiElevs() SemiElev {
+	// rturn a semiElev obj from database with our ID
 	for i := range e.Elevs {
 		if e.Elevs[i].ID == e.GetID_I() {
 			return e.Elevs[i]
@@ -84,9 +83,6 @@ func (e *Elev) ChangeMode(mode conf.ElevMode) {
 		fmt.Println("I'm Slave now")
 	}
 	// "reboot" into different mode
-}
-func (e Elev) Whoami() conf.ElevMode {
-	return e.Mode
 }
 func (e Elev) GetMode() string {
 	if e.Mode == 0 {
@@ -200,6 +196,7 @@ func (e *Elev) CloseDoors() bool {
 
 }
 func (e *Elev) compleateElevsOrders(floor int, dir conf.Directions) {
+	// remove orders from elevs database
 	for i, el := range e.Elevs {
 		if dir >= 1 {
 			for f := range el.Orders.HallUp {
@@ -218,6 +215,7 @@ func (e *Elev) compleateElevsOrders(floor int, dir conf.Directions) {
 	}
 }
 func (e Elev) UpdateLightsSum() {
+	// update ordder lighs so they will be syncronized among all elevators
 
 	var lampsUp [conf.Num_Of_Flors]int
 	var lampsDown [conf.Num_Of_Flors]int
@@ -252,20 +250,7 @@ func (e Elev) UpdateLightsSum() {
 	}
 }
 func (e *Elev) MoveOn() {
-	// going for the next order
-
-	// if e.Orders.CountOrders("Cab", "Up", "Down") == 0 {
-	// 	e.Stop()
-	// 	return
-	// }
-	// if e.CurFloor == conf.Num_Of_Flors-1 {
-	// 	e.GoDown()
-	// 	return
-	// }
-	// if e.CurFloor == 0 {
-	// 	e.GoUp()
-	// 	return
-	// }
+	// Choosing next direction to move
 
 	if e.NextDir == conf.Up && e.Orders.CountOrders("Up") > 0 && e.CurFloor != conf.Num_Of_Flors-1 {
 		e.GoUp()
@@ -317,21 +302,16 @@ func (e *Elev) MoveOn() {
 			}
 			// case when someone press the button of the floor where they currently are
 
-			// e.CompleteOrder(e.CurFloor)
 			e.Orders.CompleteOrder(e.CurFloor, 1, e.Elevs)
 			e.Orders.CompleteOrder(e.CurFloor, -1, e.Elevs)
 			// fmt.Print("__4__")
-
 			return
 		}
-
 	}
-	// e.GoUp()
-
 }
 
 func (e *Elev) SleeperDetection(sleeperDetected chan bool) {
-
+	// Goroutine to detect elevators that stuck and doing nothing bcs of uknown reason
 	timer := 0
 	for {
 		time.Sleep(time.Millisecond * 1000)
@@ -370,8 +350,6 @@ func (e *Elev) CompleteOrder(floor int) bool {
 	e.UpdateLightsSum()
 	return true
 }
-
-// !!!  THIS IS OLD VERSION OF THE FUNCTION  !!!
 func (e *Elev) ShouldIstop(floor int) bool {
 	// return true if there is an order on current floor "for us" - in same direction or order was from cabin
 	e.UpdateFloor()
@@ -384,9 +362,7 @@ func (e *Elev) ShouldIstop(floor int) bool {
 			// if e.Orders.NumOfOrders == 1 {
 			// 	return true
 			// }
-			fmt.Println("num of orders:", e.Orders.CountOrders())
 			if d != 0 && e.Dir != d && e.Orders.CountOrders() > 1 {
-				fmt.Println("NoSTOP")
 				return false
 			}
 			//  cab order || not moving || same dir	  || there is no orders in
@@ -394,7 +370,6 @@ func (e *Elev) ShouldIstop(floor int) bool {
 			if d == 0 || e.Dir == 0 || d == e.Dir {
 				return true
 			}
-			//FIXME
 			if e.Orders.FirstDown() > e.CurFloor {
 				return false
 			}
@@ -420,12 +395,6 @@ func (e *Elev) ShouldIstop(floor int) bool {
 }
 
 func (e Elev) NoOrders() bool {
-	// if e.Orders.HowManyOrders() == 0 {
-	// 	return true
-	// } else {
-	// 	return false
-	// }
-
 	count := 0
 	for _, v := range e.Orders.Cab {
 		if v {
@@ -470,15 +439,6 @@ func (e *Elev) UpdateElev(id int, a SemiElev) {
 	}
 }
 
-func (e *Elev) RemElevOLD(id int) {
-	for i := 0; i < len(e.Elevs); i++ {
-		if e.Elevs[i].ID == id {
-			e.Elevs[i].ID = -1
-			e.Elevs[i].CountOrders()
-		}
-	}
-}
-
 func (e *Elev) RemElev(id int) {
 	for i, el := range e.Elevs {
 		if el.ID == id {
@@ -518,17 +478,8 @@ func (e *Elev) giveOrderTo(elevID int, floor int, dir conf.Directions, order boo
 	}
 }
 
-func (e Elev) InZero() int {
-
-	for _, el := range e.Elevs {
-		if el.CurFloor == 0 {
-			return el.ID
-		}
-	}
-	return -1
-}
-
 func (e *Elev) DistributeOrders() {
+	// not so great
 
 	n := len(e.Elevs)
 
@@ -618,106 +569,7 @@ func (e *Elev) DistributeOrders() {
 		}
 	}
 
-	// for el := 0; el < n; el++ {
-	// 	if e.Elevs[el].ID == e.GetID_I() {
-	// 		e.Orders.HallDown = e.Elevs[el].Orders.HallDown
-	// 		e.Orders.HallUp = e.Elevs[el].Orders.HallUp
-	// 	}
-	// }
 }
-
-// func (elev *Elev) DistributeOrdersGPT() {
-// 	// Create a map to keep track of which orders have already been assigned to an elevator
-// 	assignedOrders := make(map[int]bool)
-
-// 	// Iterate over all elevators and their orders
-// 	for i := 0; i < len(elev.Elevs); i++ {
-// 		for j := 0; j < len(elev.Elevs[i].Orders.HallUp); j++ {
-// 			// Check if the current order has already been assigned to an elevator
-// 			if !assignedOrders[j] && elev.Elevs[i].Orders.HallUp[j] {
-// 				// Calculate the distance between the elevator and the order's floor
-// 				dist := int(math.Abs(float64(elev.Elevs[i].CurFloor - j)))
-
-// 				// Update the elevator's order list and mode
-// 				elev.Elevs[i].OrdersNum++
-// 				elev.Elevs[i].Orders.HallUp[j] = true
-// 				elev.Elevs[i].Dist += dist
-// 				// elev.Elevs[i].Mode = "Idle"
-
-// 				// Mark the order as assigned
-// 				assignedOrders[j] = true
-// 			}
-// 		}
-// 		for j := 0; j < len(elev.Elevs[i].Orders.HallDown); j++ {
-// 			// Check if the current order has already been assigned to an elevator
-// 			if !assignedOrders[j] && elev.Elevs[i].Orders.HallDown[j] {
-// 				// Calculate the distance between the elevator and the order's floor
-// 				dist := int(math.Abs(float64(elev.Elevs[i].CurFloor - j)))
-
-// 				// Update the elevator's order list and mode
-// 				elev.Elevs[i].OrdersNum++
-// 				elev.Elevs[i].Orders.HallDown[j] = true
-// 				elev.Elevs[i].Dist += dist
-// 				elev.Elevs[i].Mode = "Idle"
-
-// 				// Mark the order as assigned
-// 				assignedOrders[j] = true
-// 			}
-// 		}
-// 	}
-
-// 	// Iterate over all unassigned orders and assign them to the nearest elevator
-// 	for i := 0; i < len(elev.Orders.HallUp); i++ {
-// 		if !assignedOrders[i] && elev.Orders.HallUp[i] {
-// 			// Find the elevator with the shortest distance to the order's floor
-// 			shortestDist := math.MaxInt32
-// 			var closestElev *SemiElev
-
-// 			for j := 0; j < len(elev.Elevs); j++ {
-// 				dist := int(math.Abs(float64(elev.Elevs[j].CurFloor - i)))
-// 				if dist < shortestDist {
-// 					shortestDist = dist
-// 					closestElev = &elev.Elevs[j]
-// 				}
-// 			}
-
-// 			// Update the elevator's order list and mode
-// 			closestElev.OrdersNum++
-// 			closestElev.Orders.HallUp[i] = true
-// 			closestElev.Dist += shortestDist
-// 			closestElev.Mode = "Idle"
-
-// 			// Mark the order as assigned
-// 			assignedOrders[i] = true
-// 		}
-// 	}
-
-// 	for i := 0; i < len(elev.Orders.HallDown); i++ {
-// 		if !assignedOrders[i] && elev.Orders.HallDown[i] {
-// 			// Find the elevator
-// 			// Find the elevator with the shortest distance to the order's floor
-// 			shortestDist := math.MaxInt32
-// 			var closestElev *SemiElev
-
-// 			for j := 0; j < len(elev.Elevs); j++ {
-// 				dist := int(math.Abs(float64(elev.Elevs[j].CurFloor - i)))
-// 				if dist < shortestDist {
-// 					shortestDist = dist
-// 					closestElev = &elev.Elevs[j]
-// 				}
-// 			}
-
-// 			// Update the elevator's order list and mode
-// 			closestElev.OrdersNum++
-// 			closestElev.Orders.HallDown[i] = true
-// 			closestElev.Dist += shortestDist
-// 			closestElev.Mode = "Idle"
-
-// 			// Mark the order as assigned
-// 			assignedOrders[i] = true
-// 		}
-// 	}
-// }
 
 func (e *Elev) findClosestElevator(floor int) *SemiElev {
 	minDist := conf.Num_Of_Flors + 1
@@ -738,7 +590,7 @@ func (e *Elev) findClosestElevator(floor int) *SemiElev {
 	return closestElev
 }
 
-func (e *Elev) DistributeOrdersGPT() {
+func (e *Elev) DistributeOrdersV2() {
 	for floor := 0; floor < conf.Num_Of_Flors; floor++ {
 		if e.Orders.HallUp[floor] || e.Orders.HallDown[floor] {
 			// Find the closest elevator to the floor
@@ -760,7 +612,7 @@ func (e *Elev) DistributeOrdersGPT() {
 	}
 }
 
-func (e *Elev) DistributeOrdersGPT2() {
+func (e *Elev) DistributeOrdersV3() {
 	// Loop over all hall up and down buttons and distribute the orders
 	for i, btn := range e.Orders.HallUp {
 		if btn {
@@ -773,7 +625,6 @@ func (e *Elev) DistributeOrdersGPT2() {
 				e.Orders.HallUp[i] = false
 			} else {
 				// If there are no available elevators moving in the upward direction,
-				// add the order to the global queue
 				e.Orders.HallUp[i] = true
 				e.Orders.NumOfOrders++
 			}
@@ -790,7 +641,6 @@ func (e *Elev) DistributeOrdersGPT2() {
 				e.Orders.HallDown[i] = false
 			} else {
 				// If there are no available elevators moving in the downward direction,
-				// add the order to the global queue
 				e.Orders.HallDown[i] = true
 				e.Orders.NumOfOrders++
 			}
@@ -816,67 +666,9 @@ func (e *Elev) DistributeOrdersGPT2() {
 				e.Orders.HallDown[i] = false
 			} else {
 				// If there are no available elevators moving in the required directions,
-				// add the orders to the global queue
 				e.Orders.HallUp[i] = true
 				e.Orders.HallDown[i] = true
 				e.Orders.NumOfOrders += 2
-			}
-		}
-	}
-}
-
-func (e *Elev) DistributeOrdersGPT3() {
-	// loop through all non-cab orders
-	for i, v := range e.Orders.HallUp {
-		if v || e.Orders.HallDown[i] {
-			// initialize minimum distance to a very large value
-			minDist := math.MaxInt32
-			var chosenElev *SemiElev
-			var oppositeDirElev *SemiElev
-
-			// loop through all elevators
-			for j := range e.Elevs {
-				// only consider elevators that are not moving or have no orders
-				if e.Elevs[j].OrdersNum == 0 || e.Elevs[j].Dist == 0 {
-					// if an elevator has no orders, assign it to the current order
-					if e.Elevs[j].OrdersNum == 0 {
-						chosenElev = &e.Elevs[j]
-						break
-					} else if chosenElev == nil {
-						// if no elevator has been chosen yet, choose the first elevator with no orders or not moving
-						chosenElev = &e.Elevs[j]
-					}
-				} else {
-					// check if elevator is moving in the same direction as the order
-					if e.Elevs[j].Dir == conf.Up && e.Orders.HallUp[i] || e.Elevs[j].Dir == conf.Down && e.Orders.HallDown[i] {
-						// calculate distance between elevator and order
-						dist := int(math.Abs(float64(e.Elevs[j].CurFloor - i)))
-						// check if this elevator is closer to the order than the previously chosen one
-						if dist < minDist {
-							minDist = dist
-							chosenElev = &e.Elevs[j]
-						}
-					} else if oppositeDirElev == nil {
-						// if elevator is moving in the opposite direction, save it as a possible option for the opposite direction request
-						oppositeDirElev = &e.Elevs[j]
-					}
-				}
-			}
-
-			// if both UP and DOWN requests are present on the same floor, assign them to different elevators
-			if e.Orders.HallUp[i] && e.Orders.HallDown[i] {
-				chosenElev.Orders.HallUp[i] = true
-				oppositeDirElev.Orders.HallDown[i] = true
-				chosenElev.OrdersNum++
-				oppositeDirElev.OrdersNum++
-			} else {
-				// assign the order to the chosen elevator
-				if e.Orders.HallUp[i] {
-					chosenElev.Orders.HallUp[i] = true
-				} else {
-					chosenElev.Orders.HallDown[i] = true
-				}
-				chosenElev.OrdersNum++
 			}
 		}
 	}
