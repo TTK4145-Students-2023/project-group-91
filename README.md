@@ -1,6 +1,27 @@
 Elevator Project
 ================
 
+# How to use it
+
+- Install **Golang** [official instructions: https://go.dev/doc/install]
+- Run `x` instances of **Simulator/SimElevatorServer** on different ports using `--port` flag (default port: 15657)
+- Run `x` instances of **Source/main.go** using ```go run main.go --port ELEV_PORT --id ELEV_ID``` where `ELEV_PORT` is corresponding port of SimElevServer instance and unique ID for each elev of your choice 
+- On `main.go` output you should see all your elevator instances at `Elevs alive: ` with your IDs
+
+## Steering
+- order `UP`: **qwertyui**
+- order `DOWN`: **sdfghjkl**
+- order `CABIN`: **zxcvbnm,.**
+- obsrusion: **-** (doors will not close when active)
+- emergency stop: **p**
+
+## changing floor number:
+- change `Num_Of_Flors` in **Source/conf/conf.go** file to desired number
+- when running simulator use `numFloors' flag and set it to the same number
+
+
+# Description
+
 Create software for controlling `n` elevators working in parallel across `m` floors.
 
 Be reasonable: There may be semantic hoops that you can jump through to create something that is "technically correct". Do not hesitate to contact us if you feel that something is ambiguous or missing from these requirements.
